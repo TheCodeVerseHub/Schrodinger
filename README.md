@@ -1,6 +1,6 @@
 <div align="center">
 
-# CodeVerse Bot
+# Schrödinger aka CodeVerse Bot
 
 **Enterprise-grade Discord bot for programming communities with comprehensive management tools**
 
