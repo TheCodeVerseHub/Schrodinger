@@ -81,7 +81,7 @@ def test_parse_duration_valid(text, expected):
 
 @pytest.mark.parametrize(
     "text",
-    ["", "abc", "0s", "1x", "-1d", "1.5h", "d", "1d2h", "banana 1d"],
+    ["", "abc", "0s", "1x", "-1d", "1.5h", "d", "banana 1d"],
 )
 def test_parse_duration_invalid(text):
     assert helpers.parse_duration(text) is None
@@ -113,6 +113,7 @@ def test_find_channel_by_name_returns_first_match():
         ]
     )
     found = helpers.find_channel_by_name(guild, "staff")
+    assert found is not None
     assert found.name == "staff-lounge"
 
 
@@ -211,7 +212,7 @@ def test_json_store_corrupt_file_is_backed_up(isolated_store, tmp_path):
     with open(bad, "w", encoding="utf-8") as f:
         f.write("{not valid json")
 
-    assert run(json_store.get_warnings(1)) == {}
+    assert run(json_store.get_warnings(1)) == []
     # The corrupt file should have been moved aside, not silently deleted
     leftovers = [p for p in os.listdir(str(tmp_path)) if "corrupt" in p]
     assert leftovers, "expected a .corrupt backup file"

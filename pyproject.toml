@@ -5,6 +5,9 @@
 pythonpath = ["src", "."]
 testpaths = ["tests"]
 addopts = "-q"
+# The repo's legacy .gitignore excludes root-level test_*.py / *_test.py, so
+# test files live under tests/ and are named *_tests.py.
+python_files = ["*_tests.py"]
 
 [tool.ruff]
 line-length = 100
@@ -41,6 +44,10 @@ python_version = "3.13"
 ignore_missing_imports = true
 check_untyped_defs = true
 warn_unused_ignores = false
+# Only type-check the explicitly listed files; imported-but-unlisted modules
+# (e.g. legacy cogs pulled in via bot.py) are treated as Any. Re-enable
+# ``normal`` once the feature-based refactor lands.
+follow_imports = "skip"
 exclude = [
     "dash/",
     # Legacy command cogs (incl. the SAM module) are not type-clean yet;

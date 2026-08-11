@@ -49,7 +49,7 @@ def make_ctx(interaction=None):
 
 
 def make_interaction(done: bool = False, command=None):
-    calls = {"followup": [], "response": []}
+    calls: dict = {"followup": [], "response": []}
 
     response = SimpleNamespace()
     response.is_done = lambda: done
