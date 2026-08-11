@@ -70,6 +70,10 @@ verify_*.py
 *_test.py
 *_debug.py
 
+# Mypy / tooling caches
+.mypy_cache/
+.ruff_cache/
+
 # Temporary files
 *.tmp
 *.temp

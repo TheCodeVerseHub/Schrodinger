@@ -2,8 +2,6 @@
 Database Initialization Utility
 Ensures all required databases exist before bot startup
 """
-import os
-import sqlite3
 import logging
 from pathlib import Path
 

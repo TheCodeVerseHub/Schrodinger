@@ -1,0 +1,59 @@
+[tool.pytest.ini_options]
+# Tests import bot modules with the same short paths the runtime uses
+# (src/ is on sys.path when the bot runs). conftest.py also inserts both
+# the repo root and src/ for robustness.
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+# The legacy command cogs predate any linting and are slated for a feature-
+# based refactor (see transformation_blueprint.md). Keep CI green on the
+# actively-maintained core now; extend coverage as the refactor lands.
+extend-exclude = [
+    "dash/",
+    "src/commands/",
+    "src/events/member_events.py",
+]
+
+[tool.ruff.lint]
+# Start pragmatic: catch real bugs (undefined names, unused imports/vars,
+# syntax errors, bare excepts, print) without drowning the legacy codebase
+# in style errors. Style rules can be enabled incrementally.
+select = ["E4", "E7", "E9", "F", "B"]
+ignore = [
+    "E501",   # line length (legacy codebase)
+    "B008",   # function calls in default arguments (discord.py idiom)
+    "B904",   # raise-from suggestions (legacy)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["B011"]  # assert False / bare asserts are fine in tests
+# bot.py imports Warn purely for its SQLModel metadata side effect (it
+# registers the table so init_db() can create it).
+"src/bot.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = false
+exclude = [
+    "dash/",
+    # Legacy command cogs (incl. the SAM module) are not type-clean yet;
+    # scope mypy to the core modules we actively maintain until the
+    # feature-based refactor lands.
+    "src/commands",
+    "src/events/member_events.py",
+]
+files = [
+    "config.py",
+    "src/utils/helpers.py",
+    "src/utils/json_store.py",
+    "src/utils/embeds.py",
+    "src/events/message_handler.py",
+    "tests/",
+]

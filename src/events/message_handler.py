@@ -1,7 +1,7 @@
 from discord.ext import commands
 import asyncio
-import logging, discord, os, re
-from datetime import datetime, timezone
+import logging
+import discord
 
 from config import INTRODUCTION_CHANNEL_ID
 from discord import app_commands
@@ -46,15 +46,17 @@ class MessageHandler(commands.Cog):
         if not ctx.guild:
             return
 
-        channel = ctx.guild.get_channel(INTRODUCTION_CHANNEL_ID)
-        if channel is None:
+        fetched_channel = ctx.guild.get_channel(INTRODUCTION_CHANNEL_ID)
+        channel = fetched_channel if isinstance(fetched_channel, discord.TextChannel) else None
+        if not isinstance(channel, discord.TextChannel):
             try:
-                channel = await ctx.guild.fetch_channel(INTRODUCTION_CHANNEL_ID)
+                fetched = await ctx.guild.fetch_channel(INTRODUCTION_CHANNEL_ID)
+                channel = fetched if isinstance(fetched, discord.TextChannel) else None
             except (discord.Forbidden, discord.NotFound) as e:
                 logger.warning("Could not fetch intro channel: %s", e)
                 channel = None
 
-        if channel is None:
+        if not isinstance(channel, discord.TextChannel):
             await ctx.reply("❌ I can't access the introductions channel in this server.", mention_author=False)
             return
 
@@ -71,6 +73,7 @@ class MessageHandler(commands.Cog):
             mention_author=False,
         )
 
+        assert isinstance(channel, discord.TextChannel)
         scanned = 0
         processed = 0
         try:

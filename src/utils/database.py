@@ -1,6 +1,4 @@
 import sqlite3
-import discord
-from datetime import datetime
 import logging
 from config import DATABASE_NAME
 

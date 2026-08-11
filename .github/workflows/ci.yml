@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Ruff lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Ruff check
+        run: ruff check --output-format=github .
+
+  typecheck:
+    name: MyPy type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install mypy
+
+      - name: MyPy check
+        run: mypy
+
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest
+
+      - name: Upload coverage-less results (test log)
+        if: failure()
+        run: cat .pytest_cache/v/cache/lastfailed 2>/dev/null || true

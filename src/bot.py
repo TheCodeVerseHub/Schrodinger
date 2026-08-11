@@ -275,9 +275,9 @@ async def on_ready():
                 )
                 continue
             try:
-                guild = discord.Object(id=guild_id)
-                bot.tree.copy_global_to(guild=guild)
-                guild_synced = await bot.tree.sync(guild=guild)
+                guild_obj = discord.Object(id=guild_id)
+                bot.tree.copy_global_to(guild=guild_obj)
+                guild_synced = await bot.tree.sync(guild=guild_obj)
                 logger.info(f"Synced {len(guild_synced)} commands to guild {guild_id}")
             except Exception as e:
                 logger.warning(f"Failed to sync commands to guild {guild_id}: {e}")
@@ -331,7 +331,7 @@ async def on_message(message):
             )
             try:
                 await message.channel.send(embed=embed, delete_after=10)
-            except:
+            except discord.HTTPException:
                 pass  # Ignore if we can't send messages
             logger.warning(f"Prefix command blocked in unauthorized server: {message.guild.name} (ID: {message.guild.id})")
         return
