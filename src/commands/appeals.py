@@ -12,6 +12,7 @@ from discord import app_commands  # type: ignore[import-not-found]
 from discord.ext import commands  # type: ignore[import-not-found]
 
 from config import (
+    APPEALS_LOG_CHANNEL_ID,
     APPEALS_LOG_CHANNEL_IDS,
     APPEALS_MODERATOR_USER_ID,
     MODERATION_ROLE_ID,
@@ -1573,14 +1574,33 @@ class Appeals(commands.Cog):
     async def _resolve_review_channel(
         self, guild_id: int
     ) -> Optional[discord.TextChannel]:
+        """Resolve the dedicated appeals review channel.
+
+        Returns the configured appeals channel (``APPEALS_LOG_CHANNEL_ID`` /
+        ``APPEALS_LOG_CHANNEL_IDS``) when it belongs to the given guild, and
+        ``None`` otherwise. It never falls back to arbitrary channels, so
+        appeals (and the @here alert) can only ever reach the dedicated
+        appeals channel.
+        """
+        return await self._get_appeals_channel(guild_id)
+
+    async def _get_appeals_channel(
+        self, guild_id: int
+    ) -> Optional[discord.TextChannel]:
+        """Return the configured appeals channel for a guild, if it exists there.
+
+        Only the channel(s) configured in ``APPEALS_LOG_CHANNEL_ID`` /
+        ``APPEALS_LOG_CHANNEL_IDS`` are ever considered; no name-based or
+        arbitrary channel fallbacks.
+        """
         guild = self.bot.get_guild(guild_id)
         if not guild:
             return None
-        for channel in guild.text_channels:
-            name = channel.name.lower()
-            if "appeal" in name or "mod" in name or "staff" in name or "log" in name:
+        for candidate_id in (APPEALS_LOG_CHANNEL_ID, *APPEALS_LOG_CHANNEL_IDS):
+            channel = guild.get_channel(candidate_id)
+            if isinstance(channel, discord.TextChannel):
                 return channel
-        return guild.text_channels[0] if guild.text_channels else None
+        return None
 
     async def _dm_decision(
         self,
@@ -1825,13 +1845,9 @@ class Appeals(commands.Cog):
                 )
                 return
 
-            # Find appeals channel
-            appeals_channels = [
-                channel
-                for channel in guild.text_channels
-                if "appeal" in channel.name.lower()
-            ]
-            if not appeals_channels:
+            # Find the dedicated appeals channel
+            appeals_channel = await self._get_appeals_channel(guild_id)
+            if not appeals_channel:
                 logger.warning(
                     "No appeals channel found in %s for logging punishment expiry",
                     guild.name,
@@ -1844,7 +1860,7 @@ class Appeals(commands.Cog):
                 return
 
             logger.info(
-                "Found appeals channel: %s in %s", appeals_channels[0].name, guild.name
+                "Found appeals channel: %s in %s", appeals_channel.name, guild.name
             )
 
             user = self.bot.get_user(user_id) or f"<@{user_id}>"
@@ -1894,12 +1910,12 @@ class Appeals(commands.Cog):
             )
 
             # Send to appeals channel
-            logger.debug("Sending log embed to %s", appeals_channels[0].name)
-            await appeals_channels[0].send(embed=log_embed)
+            logger.debug("Sending log embed to %s", appeals_channel.name)
+            await appeals_channel.send(embed=log_embed)
             logger.info(
                 "Successfully logged punishment expiry for appeal #%s to %s",
                 appeal_id,
-                appeals_channels[0].name,
+                appeals_channel.name,
             )
 
         except Exception as e:
@@ -2338,14 +2354,10 @@ class Appeals(commands.Cog):
                     )
                     log_embed.set_footer(text=f"User: {after.name}")
 
-                    # Try to send to appeals channel or log it
-                    appeals_channels = [
-                        channel
-                        for channel in after.guild.text_channels
-                        if "appeal" in channel.name.lower()
-                    ]
-                    if appeals_channels:
-                        await appeals_channels[0].send(embed=log_embed)
+                    # Try to send to the dedicated appeals channel or log it
+                    appeals_channel = await self._get_appeals_channel(after.guild.id)
+                    if appeals_channel:
+                        await appeals_channel.send(embed=log_embed)
                     else:
                         print(f"[Appeals] {log_embed.description}")
 
@@ -2475,13 +2487,9 @@ class Appeals(commands.Cog):
                         value=f"#{', #'.join(str(a[0]) for a in appeals)}",
                         inline=False,
                     )
-                    appeals_channels = [
-                        channel
-                        for channel in after.guild.text_channels
-                        if "appeal" in channel.name.lower()
-                    ]
-                    if appeals_channels:
-                        await appeals_channels[0].send(embed=log_embed)
+                    appeals_channel = await self._get_appeals_channel(after.guild.id)
+                    if appeals_channel:
+                        await appeals_channel.send(embed=log_embed)
                 except Exception as e:
                     print(f"[Appeals] Error logging manual timeout removal: {e}")
 
@@ -2861,14 +2869,10 @@ class Appeals(commands.Cog):
                             )
                             log_embed.timestamp = datetime.now(timezone.utc)
 
-                            # Try to send to appeals channel or log it
-                            appeals_channels = [
-                                channel
-                                for channel in guild.text_channels
-                                if "appeal" in channel.name.lower()
-                            ]
-                            if appeals_channels:
-                                await appeals_channels[0].send(embed=log_embed)
+                            # Try to send to the dedicated appeals channel or log it
+                            appeals_channel = await self._get_appeals_channel(guild.id)
+                            if appeals_channel:
+                                await appeals_channel.send(embed=log_embed)
                             else:
                                 print(f"[Appeals] {log_embed.description}")
                             break

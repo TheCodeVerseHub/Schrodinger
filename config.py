@@ -87,11 +87,14 @@ MODERATION_POINT_RESET_DAYS = _env_int('MODERATION_POINT_RESET_DAYS', 30)
 STATUS_MESSAGE = os.getenv('STATUS_MESSAGE', 'Professional Moderation | !help')
 
 # Appeals system settings
-APPEALS_LOG_CHANNEL_IDS = [
-    int(x.strip())
-    for x in os.getenv('APPEALS_LOG_CHANNEL_IDS', '1423642446616592385,1444013659134361703').split(',')
-    if x.strip()
-]
+# All timeout appeals, appeal review dashboards, @here alerts and appeal
+# logging are routed exclusively to this single channel.
+APPEALS_LOG_CHANNEL_IDS = _env_int_list(
+    'APPEALS_LOG_CHANNEL_IDS', '1423642446616592385'
+)
+APPEALS_LOG_CHANNEL_ID = (
+    APPEALS_LOG_CHANNEL_IDS[0] if APPEALS_LOG_CHANNEL_IDS else 1423642446616592385
+)
 
 # Database settings
 DATABASE_NAME = os.getenv('DATABASE_NAME', 'data/modbot.db')

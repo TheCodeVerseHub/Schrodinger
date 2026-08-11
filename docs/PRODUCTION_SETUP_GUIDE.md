@@ -188,7 +188,7 @@ Create these channels for proper monitoring:
 - `#automod-logs` - Automatic moderation actions
 - `#mod-logs` - Manual moderation actions  
 - `#staff-alerts` - Raid/nuke detection alerts
-- `#appeals` - Appeal notifications (channel ID goes in `.env`, e.g. `APPEALS_LOG_CHANNEL_IDS` / `LOG_CHANNEL_WARNINGS_ID`)
+- `#appeals` - ALL timeout appeals, appeal review dashboards, @here alerts and appeal logging (channel ID goes in `.env`, e.g. `APPEALS_LOG_CHANNEL_ID`; no other channel ever receives appeal notifications)
 
 ---
 
