@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **Tempban persistence**:
+    - Tempbans used to be scheduled with an in-memory `asyncio.sleep` task, so any bot restart converted them into permanent bans. Tempbans are now persisted to the `tempbans` table in the main database and re-scheduled (or executed immediately if already expired) when the bot comes back online.
 - **Appeals System**:
     - Timeout appeal notifications (including the `@here` staff alert) could be sent to arbitrary channels because the review channel was resolved by channel-name matching and fell back to the guild's first text channel (a public channel). Appeal content now only ever goes to the configured appeals channel.
 

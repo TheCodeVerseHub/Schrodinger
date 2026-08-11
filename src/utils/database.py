@@ -31,6 +31,16 @@ def init_db():
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS tempbans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                unban_at REAL NOT NULL,
+                reason TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         conn.commit()
     except Exception as e:
         logger.error("Failed to initialize database: %s", e)
