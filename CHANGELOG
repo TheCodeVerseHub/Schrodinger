@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Appeals System**:
+    - Timeout appeal notifications (including the `@here` staff alert) could be sent to arbitrary channels because the review channel was resolved by channel-name matching and fell back to the guild's first text channel (a public channel). Appeal content now only ever goes to the configured appeals channel.
+
+### Changed
+- **Appeals System**:
+    - `APPEALS_LOG_CHANNEL_IDS` now defaults to a single appeals channel and the new `APPEALS_LOG_CHANNEL_ID` config is the single source of truth for appeal destinations.
+    - All `APPEAL_*` logging events (`APPEAL_SUBMITTED`, `APPEAL_APPROVED`, `APPEAL_DENIED`, `APPEAL_EXTENDED`) now route to the appeals channel instead of the warnings log channel.
+    - Removed name-based channel lookups (`"appeal" in channel.name`) from appeal log sends; all sends resolve through the configured channel only.
+
+### Added
+- **Appeals System**:
+    - Added a safety guard (`_guard_appeals_channel`) applied to every appeal send path that logs a prominent warning and blocks the send if appeal content ever targets a channel other than the configured appeals channel.
+
 ## [2026-01-15]
 
 ### Removed
