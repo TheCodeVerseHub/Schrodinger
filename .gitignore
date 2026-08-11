@@ -91,3 +91,7 @@ Thumbs.db
 # Backup files
 *.bak
 *.backup
+
+# Personal notes and docs
+suggestion.md
+transformation_blueprint.md
