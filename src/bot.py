@@ -2,6 +2,7 @@ import os
 import logging
 import asyncio
 import discord
+from discord import app_commands
 import time
 from discord.ext import commands
 from datetime import datetime, timezone
@@ -11,6 +12,7 @@ from commands.modules.sam import bridge as sam_bridge
 from utils.json_store import get_guild_prefix
 from utils.helpers import safe_interaction_reply
 from config import AUTHORIZED_GUILD_IDS
+from events.message_handler import build_error_embed
 import atexit
 
 # Load environment variables once at startup
@@ -101,11 +103,45 @@ COGS_TO_LOAD = [
     'events.message_handler', # Auto-thanks system for staff aura
 ]
 
+class CodeVerseTree(app_commands.CommandTree):
+    """Command tree whose ``on_error`` surfaces app-command errors to users.
+
+    In discord.py 2.x, app-command errors (slash commands and hybrid commands
+    invoked as slash) are dispatched to the *tree's* ``on_error`` callback, not
+    to a bot event or a cog listener. Overriding it here -- the tree is created
+    with ``tree_cls`` -- is the only way to catch them globally.
+
+    Per-command ``@app_commands.error`` handlers still run first (the tree
+    invokes them in ``_dispatch_error`` before this callback), so nothing is
+    double-handled.
+    """
+
+    async def on_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        # ``interaction.command`` is None for unhandled autocomplete/misc errors;
+        # the embed builder falls back to a generic label in that case.
+        command = getattr(interaction, 'command', None)
+        try:
+            embed = await build_error_embed(interaction, error, command)
+        except Exception:
+            logger.error("build_error_embed failed", exc_info=True)
+            return
+
+        try:
+            if interaction.response.is_done():
+                return
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except (discord.InteractionResponded, discord.HTTPException, discord.Forbidden):
+            # Interaction already responded to / expired, or we lack permission.
+            pass
+        except Exception:
+            logger.warning("Failed to send app-command error response", exc_info=True)
+
+
 class CodeVerseBot(commands.Bot):
     def __init__(self):
         """Initialize the bot with desired prefix and intents."""
         # Default prefix is '$' (per-guild overrides supported via /prefix)
-        super().__init__(command_prefix=_dynamic_prefix, intents=intents, help_command=None)
+        super().__init__(command_prefix=_dynamic_prefix, intents=intents, help_command=None, tree_cls=CodeVerseTree)
         self.start_time = datetime.now(timezone.utc)
         self.instance_id = INSTANCE_ID
 

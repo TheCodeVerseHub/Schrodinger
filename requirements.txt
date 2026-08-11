@@ -7,3 +7,6 @@ flask>=2.3.0
 sqlmodel>=0.0.14
 sqlalchemy>=2.0.0
 pydantic-settings>=2.1.0
+
+# Dev / test
+pytest>=7.4

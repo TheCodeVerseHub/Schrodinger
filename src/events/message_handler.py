@@ -4,6 +4,7 @@ import logging, discord, os, re
 from datetime import datetime, timezone
 
 from config import INTRODUCTION_CHANNEL_ID
+from discord import app_commands
 
 logger = logging.getLogger(__name__)
 
@@ -109,84 +110,111 @@ class MessageHandler(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        """Global command error handler"""
-        # Don't handle errors that are already handled by command-specific handlers
-        if hasattr(ctx.command, 'on_error'):
+        """Global prefix-command error handler.
+
+        Runs for legacy/hybrid commands invoked with the prefix. Slash/hybrid
+        commands invoked as app commands are handled by the tree override in
+        ``CodeVerseBot`` (``bot.py``), which reuses :func:`build_error_embed`.
+        """
+        # Don't handle errors for commands that define their own error handler
+        # (``@command.error``). ``Command.on_error`` only exists on such commands,
+        # so the old ``hasattr(ctx.command, 'on_error')`` guard always returned
+        # early and made this entire handler dead code.
+        if ctx.command is not None and ctx.command.has_error_handler():
+            return
+        if ctx.cog is not None and ctx.cog.has_error_handler():
             return
 
         if isinstance(error, commands.CommandNotFound):
-            return  # Ignore command not found errors
-
-        # For slash commands, check if interaction was already responded to
-        if hasattr(ctx, 'interaction') and ctx.interaction and ctx.interaction.response.is_done():
-            try:
-                # Try to send a followup instead
-                embed = discord.Embed(
-                    title="❌ An Error Occurred",
-                    description=f"Error: {str(error)}",
-                    color=discord.Color.red()
-                )
-                await ctx.interaction.followup.send(embed=embed, ephemeral=True)
-            except Exception as e:
-                logger.warning("Followup after slash error also failed: %s", e)
+            # Not a real error -- unknown command. Log at DEBUG for triage;
+            # a high volume here usually means the prefix cache is out of sync.
+            logger.debug("CommandNotFound: %s (guild_id=%s)", error, getattr(ctx.guild, 'id', None))
             return
 
-        if isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(
-                title="❌ Missing Permissions",
-                description="You don't have permission to use this command!",
-                color=discord.Color.red()
-            )
-            await ctx.send(embed=embed, delete_after=10)
-
-        elif isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(
-                title="❌ Missing Argument",
-                description=f"Missing required argument: `{error.param}`\n"
-                           f"Use `?help {ctx.command}` for usage information.",
-                color=discord.Color.red()
-            )
-            await ctx.send(embed=embed, delete_after=15)
-
-        elif isinstance(error, commands.BadArgument):
-            embed = discord.Embed(
-                title="❌ Invalid Argument",
-                description="Invalid argument provided!\n"
-                           f"Use `?help {ctx.command}` for usage information.",
-                color=discord.Color.red()
-            )
-            await ctx.send(embed=embed, delete_after=15)
-
-        elif isinstance(error, commands.CommandOnCooldown):
-            embed = discord.Embed(
-                title="⏰ Command on Cooldown",
-                description=f"This command is on cooldown. Try again in {error.retry_after:.1f} seconds.",
-                color=discord.Color.orange()
-            )
-            await ctx.send(embed=embed, delete_after=10)
-
-        elif isinstance(error, commands.MemberNotFound):
-            embed = discord.Embed(
-                title="❌ Member Not Found",
-                description="Could not find the specified member!",
-                color=discord.Color.red()
-            )
-            await ctx.send(embed=embed, delete_after=10)
-
-        else:
-            # Log unexpected errors
-            logger.error("Unhandled error in command %s: %s", ctx.command, error)
-
-            embed = discord.Embed(
-                title="❌ An Error Occurred",
-                description="An unexpected error occurred while processing your command.\n"
-                           "Please try again later or contact an administrator.",
-                color=discord.Color.red()
-            )
+        # For slash/hybrid invocations, prefer replying on the interaction
+        # (works when the interaction is still open or already done).
+        interaction = getattr(ctx, 'interaction', None)
+        if interaction is not None:
             try:
-                await ctx.send(embed=embed, delete_after=15)
+                embed = await build_error_embed(ctx, error, ctx.command)
+                if interaction.response.is_done():
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+                else:
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
             except Exception as e:
-                logger.warning("Failed to send error response: %s", e)
+                logger.warning("Failed to send error response on interaction: %s", e)
+            return
+
+        embed = await build_error_embed(ctx, error, ctx.command)
+        try:
+            await ctx.send(embed=embed, delete_after=15)
+        except discord.Forbidden:
+            logger.warning("Missing permission to send error response for command %s", ctx.command)
+        except Exception as e:
+            logger.warning("Failed to send error response: %s", e)
+
+
+async def build_error_embed(context, error, command=None) -> discord.Embed:
+    """Build a user-facing error embed for a command or app-command error.
+
+    Shared by the prefix error listener and the app-command tree override so
+    both surfaces produce identical messages.
+    """
+    command_name = None
+    if command is not None:
+        command_name = getattr(command, 'qualified_name', None) or getattr(command, 'name', None)
+    label = command_name or 'command'
+
+    if isinstance(error, (commands.MissingPermissions, app_commands.MissingPermissions)):
+        return discord.Embed(
+            title="❌ Missing Permissions",
+            description="You don't have permission to use this command!",
+            color=discord.Color.red()
+        )
+
+    if isinstance(error, commands.MissingRequiredArgument):
+        return discord.Embed(
+            title="❌ Missing Argument",
+            description=f"Missing required argument: `{error.param}`\n"
+                       f"Use `?help {label}` for usage information.",
+            color=discord.Color.red()
+        )
+
+    if isinstance(error, commands.BadArgument):
+        return discord.Embed(
+            title="❌ Invalid Argument",
+            description=f"Invalid argument provided!\nUse `?help {label}` for usage information.",
+            color=discord.Color.red()
+        )
+
+    if isinstance(error, (commands.CommandOnCooldown, app_commands.CommandOnCooldown)):
+        return discord.Embed(
+            title="⏰ Command on Cooldown",
+            description=f"This command is on cooldown. Try again in {error.retry_after:.1f} seconds.",
+            color=discord.Color.orange()
+        )
+
+    if isinstance(error, commands.MemberNotFound):
+        return discord.Embed(
+            title="❌ Member Not Found",
+            description="Could not find the specified member!",
+            color=discord.Color.red()
+        )
+
+    # Anything else: log with stack trace and tell the user generically.
+    logger.error(
+        "Unhandled error in %s (guild_id=%s): %s",
+        label,
+        getattr(getattr(context, 'guild', None), 'id', None),
+        error,
+        exc_info=True,
+    )
+    return discord.Embed(
+        title="❌ An Error Occurred",
+        description="An unexpected error occurred while processing your command.\n"
+                   "Please try again later or contact an administrator.",
+        color=discord.Color.red()
+    )
 
     # AFK and XP systems removed per request.
 
