@@ -1215,7 +1215,9 @@ class Appeals(commands.Cog):
 
         review_view = AppealReviewDashboard(self, updated_record)
         review_channel = await self._resolve_review_channel(updated_record.guild_id)
-        if review_channel:
+        if review_channel and self._guard_appeals_channel(
+            review_channel, context="appeal review dashboard + @here alert"
+        ):
             # Send @here mention first as a separate message (Components V2 views
             # cannot be sent with a content field in the same message)
             await review_channel.send(
@@ -1602,6 +1604,30 @@ class Appeals(commands.Cog):
                 return channel
         return None
 
+    def _guard_appeals_channel(
+        self, channel: discord.TextChannel, *, context: str
+    ) -> bool:
+        """Safety net for appeal message sends.
+
+        Returns ``True`` only when ``channel`` is the configured appeals
+        channel. If any code path ever tries to send appeal content
+        somewhere else, this logs a prominent warning and returns ``False``
+        so the send is blocked instead of leaking into a public channel.
+        """
+        configured_ids = {APPEALS_LOG_CHANNEL_ID, *APPEALS_LOG_CHANNEL_IDS}
+        if channel.id in configured_ids:
+            return True
+        logger.warning(
+            "[Appeals] SAFETY GUARD BLOCKED %s: appeal content targeted "
+            "non-appeals channel %s (%s). Configured appeals channel(s): %s. "
+            "The send was blocked.",
+            context,
+            channel,
+            channel.id,
+            sorted(configured_ids),
+        )
+        return False
+
     async def _dm_decision(
         self,
         record: AppealRecord,
@@ -1909,14 +1935,17 @@ class Appeals(commands.Cog):
                 icon_url=guild.icon.url if guild.icon else None,
             )
 
-            # Send to appeals channel
-            logger.debug("Sending log embed to %s", appeals_channel.name)
-            await appeals_channel.send(embed=log_embed)
-            logger.info(
-                "Successfully logged punishment expiry for appeal #%s to %s",
-                appeal_id,
-                appeals_channel.name,
-            )
+            # Send to appeals channel (guarded so it can never leak elsewhere)
+            if self._guard_appeals_channel(
+                appeals_channel, context="punishment expiry log"
+            ):
+                logger.debug("Sending log embed to %s", appeals_channel.name)
+                await appeals_channel.send(embed=log_embed)
+                logger.info(
+                    "Successfully logged punishment expiry for appeal #%s to %s",
+                    appeal_id,
+                    appeals_channel.name,
+                )
 
         except Exception as e:
             logger.error(
@@ -2083,6 +2112,8 @@ class Appeals(commands.Cog):
                 )
                 embed.timestamp = datetime.now(timezone.utc)
                 embed.set_footer(text=_appeals_footer_text(guild.name))
+                if not self._guard_appeals_channel(ch, context="DM failure log"):
+                    break
                 try:
                     await ch.send(embed=embed)
                     logger.debug("Logged DM failure to channel %s", cid)
@@ -2121,6 +2152,8 @@ class Appeals(commands.Cog):
                 )
                 embed.timestamp = datetime.now(timezone.utc)
                 embed.set_footer(text=_appeals_footer_text(guild.name))
+                if not self._guard_appeals_channel(ch, context="DM success log"):
+                    break
                 try:
                     await ch.send(embed=embed)
                 except Exception as e:
@@ -2356,7 +2389,9 @@ class Appeals(commands.Cog):
 
                     # Try to send to the dedicated appeals channel or log it
                     appeals_channel = await self._get_appeals_channel(after.guild.id)
-                    if appeals_channel:
+                    if appeals_channel and self._guard_appeals_channel(
+                        appeals_channel, context="appeal log embed"
+                    ):
                         await appeals_channel.send(embed=log_embed)
                     else:
                         print(f"[Appeals] {log_embed.description}")
@@ -2488,7 +2523,9 @@ class Appeals(commands.Cog):
                         inline=False,
                     )
                     appeals_channel = await self._get_appeals_channel(after.guild.id)
-                    if appeals_channel:
+                    if appeals_channel and self._guard_appeals_channel(
+                        appeals_channel, context="appeal log embed"
+                    ):
                         await appeals_channel.send(embed=log_embed)
                 except Exception as e:
                     print(f"[Appeals] Error logging manual timeout removal: {e}")
@@ -2871,7 +2908,9 @@ class Appeals(commands.Cog):
 
                             # Try to send to the dedicated appeals channel or log it
                             appeals_channel = await self._get_appeals_channel(guild.id)
-                            if appeals_channel:
+                            if appeals_channel and self._guard_appeals_channel(
+                                appeals_channel, context="appeal log embed"
+                            ):
                                 await appeals_channel.send(embed=log_embed)
                             else:
                                 print(f"[Appeals] {log_embed.description}")
