@@ -951,6 +951,7 @@ class Appeals(commands.Cog):
                 "APPEAL_APPROVED": APPEALS_ACCEPT_COLOR,
                 "APPEAL_DENIED": APPEALS_REJECT_COLOR,
                 "APPEAL_EXTENDED": APPEALS_PANEL_COLOR,
+                "APPEAL_AUTORESOLVED": APPEALS_TIMEOUT_END_COLOR,
             }.get(event_type, APPEALS_PANEL_COLOR),
             jump_url=jump_url or record.jump_url,
         )
@@ -1261,6 +1262,32 @@ class Appeals(commands.Cog):
         except Exception:
             pass
 
+    def _timeout_already_expired_reason(
+        self, record: AppealRecord, member: Optional[discord.Member]
+    ) -> Optional[str]:
+        """Return a human-readable reason when a timeout is already gone.
+
+        ``None`` means the timeout is still active and the appeal can be
+        processed normally. A reason string means the punishment no longer
+        exists (member left, timeout removed, or naturally expired), so the
+        appeal should be auto-resolved instead of approved.
+        """
+        now = datetime.now(timezone.utc)
+        if member is None:
+            return (
+                "The user is no longer in the server, so there is no timeout to remove."
+            )
+        if member.timed_out_until is None:
+            return "The user is no longer timed out, so there is no timeout to remove."
+        if member.timed_out_until <= now:
+            return "The timeout had already expired before this appeal was accepted."
+        if record.timeout_expires_at and record.timeout_expires_at <= now:
+            return (
+                "The timeout had already expired "
+                f"{_format_relative(record.timeout_expires_at)} before this appeal was accepted."
+            )
+        return None
+
     async def finalize_appeal_decision(
         self,
         interaction: discord.Interaction,
@@ -1296,11 +1323,51 @@ class Appeals(commands.Cog):
 
         if decision == "approved":
             member = self._resolve_member(record.guild_id, record.user_id)
-            if member is None:
+
+            # The timeout may have already expired (or the member may have left
+            # the server) while the appeal was pending. In that case there is
+            # nothing to remove, so block the accept, mark the appeal as
+            # auto-resolved and tell the moderator instead of approving a
+            # punishment that no longer exists or erroring with a bare
+            # "Member Not Found" message.
+            expiry_reason = self._timeout_already_expired_reason(record, member)
+            if expiry_reason is not None:
+                conn = sqlite3.connect(DATABASE_NAME)
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE unban_requests
+                    SET status = 'auto_resolved', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP,
+                        review_reason = ?, jump_url = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        interaction.user.id,
+                        expiry_reason,
+                        interaction.message.jump_url if interaction.message else None,
+                        record.appeal_id,
+                    ),
+                )
+                conn.commit()
+                conn.close()
+
+                await self._disable_appeal_buttons_by_id(
+                    record.appeal_id, record.guild_id, reason=expiry_reason
+                )
+                await self._log_appeal_event(
+                    "APPEAL_AUTORESOLVED",
+                    updated_record,
+                    moderator=interaction.user,
+                    reason=expiry_reason,
+                    jump_url=updated_record.jump_url,
+                )
                 await interaction.followup.send(
-                    embed=create_error_embed(
-                        "Member Not Found",
-                        "The user is no longer in the server, so the timeout cannot be removed.",
+                    embed=create_info_embed(
+                        "Appeal Auto-Resolved",
+                        f"{expiry_reason}\n\n"
+                        f"Appeal **#{record.appeal_id}** was marked as auto-resolved "
+                        "instead of approved. The user was not notified.",
+                        guild_name=record.guild_name,
                     ),
                     ephemeral=True,
                 )
@@ -1824,7 +1891,9 @@ class Appeals(commands.Cog):
         except Exception:
             return None
 
-    async def _disable_appeal_buttons_by_id(self, appeal_id: int, guild_id: int):
+    async def _disable_appeal_buttons_by_id(
+        self, appeal_id: int, guild_id: int, *, reason: Optional[str] = None
+    ):
         """Find and disable appeal buttons in messages for a specific appeal ID"""
         try:
             record = await self._fetch_appeal_record(appeal_id)
@@ -1844,7 +1913,8 @@ class Appeals(commands.Cog):
                             self,
                             record,
                             decision="auto_resolved",
-                            decision_reason="The timeout expired or was removed while this appeal was pending.",
+                            decision_reason=reason
+                            or "The timeout expired or was removed while this appeal was pending.",
                             alert_text="This appeal has been automatically resolved.",
                         )
                     )

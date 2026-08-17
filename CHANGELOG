@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Appeals System**:
     - Added a safety guard (`_guard_appeals_channel`) applied to every appeal send path that logs a prominent warning and blocks the send if appeal content ever targets a channel other than the configured appeals channel.
+    - Accepting an appeal whose timeout already expired (or whose member left the server) now blocks the accept, marks the appeal as auto-resolved, disables the review buttons with a clear note and logs `APPEAL_AUTORESOLVED` to the appeals channel, instead of approving a punishment that no longer exists or erroring with "Member Not Found".
 
 ## [2026-01-15]
 

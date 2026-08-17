@@ -124,6 +124,7 @@ class LogFormatter:
                 "APPROVED": 0x00FF00,
                 "DENIED": 0xFF0000,
                 "EXTENDED": 0x2B2D31,
+                "AUTORESOLVED": 0xF9F504,
             }
             embed.title = f"Appeal {decision}"
             embed.description = log_item.get(

@@ -87,13 +87,14 @@ class ChannelLogMixin(commands.Cog):
                         
                         for p_name, p_value in after_perms.items():
                              if before_perms.get(p_name) != p_value:
-                                 # Format: "read_messages: Grant"
-                                 val_str = "⬜ Default"
-                                 if p_value is True: val_str = "✅ Allow"
-                                 elif p_value is False: val_str = "❌ Deny"
-                                 
-                                 readable_name = p_name.replace('_', ' ').title()
-                                 diffs.append(f"{readable_name}: {val_str}")
+                                 # Format: `added: send_messages` / `removed: view_channel` / `reset: read_messages`
+                                 if p_value is True:
+                                     val_str = f"added: {p_name}"
+                                 elif p_value is False:
+                                     val_str = f"removed: {p_name}"
+                                 else:
+                                     val_str = f"reset: {p_name}"
+                                 diffs.append(f"`{val_str}`")
                         
                         if diffs:
                             overwrite_changes.append(f"• **{target_name}**: " + ", ".join(diffs))
