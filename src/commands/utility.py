@@ -2,293 +2,10 @@ import discord  # type: ignore[import-not-found]
 from discord.ext import commands  # type: ignore[import-not-found]
 from discord import app_commands  # type: ignore[import-not-found]
 from typing import Optional
-import json
-import re
-from datetime import datetime, timezone
 
-from utils.helpers import safe_interaction_reply, sanitize_mentions
+from utils.helpers import safe_interaction_reply
+from .embed_builder import EmbedBuilderDashboard
 
-class EmbedEditModal(discord.ui.Modal):
-    """Interactive modal for editing existing embeds"""
-    
-    def __init__(self, cog, original_message, original_embed, webhook=None):
-        super().__init__(title="Edit Existing Embed")
-        self.cog = cog
-        self.original_message = original_message
-        self.original_embed = original_embed
-        self.webhook = webhook
-        
-        # Pre-populate fields with existing embed data
-        self.embed_title.default = original_embed.title or ""
-        self.embed_description.default = original_embed.description or ""
-        self.embed_footer.default = original_embed.footer.text if original_embed.footer else ""
-        
-        # Pre-populate content if message works
-        self.embed_premessage.default = original_message.content or ""
-        
-        # Extract color as hex
-        if original_embed.color:
-            self.embed_color.default = f"#{original_embed.color.value:06x}"
-        else:
-            self.embed_color.default = "blue"
-    
-    # Input fields for the modal
-    embed_title = discord.ui.TextInput(
-        label='Embed Title',
-        placeholder='Enter the title for your embed...',
-        required=True,
-        max_length=256
-    )
-    
-    embed_description = discord.ui.TextInput(
-        label='Description',
-        placeholder='Enter the main content of your embed...',
-        style=discord.TextStyle.paragraph,
-        required=True,
-        max_length=4000
-    )
-    
-    embed_color = discord.ui.TextInput(
-        label='Color (optional)',
-        placeholder='red, blue, green, gold, purple, orange, teal, #FF0000',
-        required=False,
-        max_length=50,
-        default='blue'
-    )
-    
-    embed_footer = discord.ui.TextInput(
-        label='Footer Text (optional)',
-        placeholder='Enter footer text...',
-        required=False,
-        max_length=2048
-    )
-    
-    embed_premessage = discord.ui.TextInput(
-        label='Pre-Message (optional)',
-        placeholder='Write a plain message to send before the embed (you can @mention people or roles)...',
-        style=discord.TextStyle.paragraph,
-        required=False,
-        max_length=2000
-    )
-
-    async def on_submit(self, interaction: discord.Interaction):
-        """Handle the form submission and edit the embed"""
-        try:
-            # Acknowledge immediately: editing a message (or webhook call) can
-            # exceed Discord's 3-second interaction window.
-            await interaction.response.defer(ephemeral=True)
-
-            # User content is sanitized so embeds can't be abused for mass
-            # pings (@everyone/@here/role/user mentions are escaped).
-            embed = discord.Embed(
-                title=sanitize_mentions(self.embed_title.value),
-                description=sanitize_mentions(self.embed_description.value)
-            )
-            
-            # Set color
-            color_value = self.embed_color.value.strip().lower() if self.embed_color.value else 'blue'
-            if color_value.startswith('#'):
-                try:
-                    color_int = int(color_value[1:], 16)
-                    embed.color = discord.Color(color_int)
-                except ValueError:
-                    embed.color = discord.Color.blue()
-            else:
-                embed.color = self.cog.colors.get(color_value, discord.Color.blue())
-            
-            # Add footer if provided
-            if self.embed_footer.value:
-                embed.set_footer(text=sanitize_mentions(self.embed_footer.value))
-            
-            # Preserve original image if it exists
-            if self.original_embed.image:
-                embed.set_image(url=self.original_embed.image.url)
-
-            # Preserve thumbnail if it exists
-            if self.original_embed.thumbnail:
-                embed.set_thumbnail(url=self.original_embed.thumbnail.url)
-            
-            # Edit the original message with the new embed
-            new_content = sanitize_mentions(self.embed_premessage.value)
-            
-            if self.webhook:
-                await self.webhook.edit_message(self.original_message.id, content=new_content, embed=embed)
-            else:
-                await self.original_message.edit(content=new_content, embed=embed)
-            
-            # Send ephemeral confirmation (followup: the interaction is deferred)
-            success_embed = discord.Embed(
-                title="✅ Embed Updated",
-                description=f"The embed has been updated!\n[Jump to message]({self.original_message.jump_url})",
-                color=discord.Color.green()
-            )
-            await interaction.followup.send(embed=success_embed, ephemeral=True)
-            
-        except discord.Forbidden:
-            error_embed = discord.Embed(
-                title="❌ Permission Error",
-                description="I don't have permission to edit that message. Make sure I sent the original message.",
-                color=discord.Color.red()
-            )
-            await safe_interaction_reply(interaction, embed=error_embed, ephemeral=True)
-        except discord.NotFound:
-            error_embed = discord.Embed(
-                title="❌ Message Not Found",
-                description="The message could not be found. It may have been deleted.",
-                color=discord.Color.red()
-            )
-            await safe_interaction_reply(interaction, embed=error_embed, ephemeral=True)
-        except Exception as e:
-            error_embed = discord.Embed(
-                title="❌ Embed Edit Failed",
-                description=f"Error: {str(e)}",
-                color=discord.Color.red()
-            )
-            await safe_interaction_reply(interaction, embed=error_embed, ephemeral=True)
-
-class EmbedCreatorModal(discord.ui.Modal):
-    """Interactive modal for creating embeds"""
-    
-    def __init__(self, cog):
-        super().__init__(title="Create Beautiful Embed")
-        self.cog = cog
-    
-    # Input fields for the modal
-    embed_title = discord.ui.TextInput(
-        label='Embed Title',
-        placeholder='Enter the title for your embed...',
-        required=True,
-        max_length=256
-    )
-    
-    embed_description = discord.ui.TextInput(
-        label='Description',
-        placeholder='Enter the main content of your embed...',
-        style=discord.TextStyle.paragraph,
-        required=True,
-        max_length=4000
-    )
-    
-    embed_color = discord.ui.TextInput(
-        label='Color (optional)',
-        placeholder='red, blue, green, gold, purple, orange, teal, #FF0000',
-        required=False,
-        max_length=50,
-        default='blue'
-    )
-    
-    embed_footer = discord.ui.TextInput(
-        label='Footer Text (optional)',
-        placeholder='Enter footer text...',
-        required=False,
-        max_length=2048
-    )
-    
-    # Optional pre-message (plain text sent BEFORE the embed; useful for mentions)
-    embed_premessage = discord.ui.TextInput(
-        label='Pre-Message (optional)',
-        placeholder='Write a plain message to send before the embed (you can @mention people or roles)...',
-        style=discord.TextStyle.paragraph,
-        required=False,
-        max_length=2000,
-        default=''
-    )
-    # end of create modal fields
-
-    async def on_submit(self, interaction: discord.Interaction):
-        """Handle the form submission and create the embed"""
-        try:
-            # Acknowledge immediately: webhook lookups/creation and channel sends
-            # below can exceed Discord's 3-second interaction window.
-            await interaction.response.defer(ephemeral=True)
-
-            # User content is sanitized so embeds can't be abused for mass
-            # pings (@everyone/@here/role/user mentions are escaped).
-            embed = discord.Embed(
-                title=sanitize_mentions(self.embed_title.value),
-                description=sanitize_mentions(self.embed_description.value)
-            )
-            
-            # Set color
-            color_value = self.embed_color.value.strip().lower() if self.embed_color.value else 'blue'
-            if color_value.startswith('#'):
-                try:
-                    color_int = int(color_value[1:], 16)
-                    embed.color = discord.Color(color_int)
-                except ValueError:
-                    embed.color = discord.Color.blue()
-            else:
-                embed.color = self.cog.colors.get(color_value, discord.Color.blue())
-            
-            # Add footer if provided
-            if self.embed_footer.value:
-                embed.set_footer(text=sanitize_mentions(self.embed_footer.value))
-            
-            # Use Webhook to send ephemeral-style user impersonated message
-            target_channel = interaction.channel
-            webhook_sent = False
-            
-            # Check if we can use webhooks (TextChannels only usually)
-            if isinstance(target_channel, discord.TextChannel) and interaction.guild and target_channel.permissions_for(interaction.guild.me).manage_webhooks:
-                try:
-                    # Find or create webhook
-                    webhooks = await target_channel.webhooks()
-                    webhook = next((w for w in webhooks if w.user and w.user.id == self.cog.bot.user.id), None)
-                    
-                    if not webhook:
-                        webhook = await target_channel.create_webhook(name="Embed Bot helper")
-                    
-                    # Send via webhook with 'The Codeverse Hub' identity
-                    content = sanitize_mentions(self.embed_premessage.value) if self.embed_premessage.value else discord.utils.MISSING
-                    
-                    await webhook.send(
-                        content=content,
-                        embed=embed,
-                        username="The Codeverse Hub",
-                        avatar_url=self.cog.bot.user.display_avatar.url,
-                        allowed_mentions=discord.AllowedMentions.none(),
-                    )
-                    webhook_sent = True
-                    
-                except Exception as e:
-                    # Fallback to normal send if webhook fails
-                    webhook_sent = False
-            
-            if not webhook_sent:
-                # Fallback: Send plain message first if provided, then embedding as bot
-                if isinstance(target_channel, (discord.TextChannel, discord.Thread)):
-                    premessage = sanitize_mentions(self.embed_premessage.value)
-                    if premessage:
-                        try:
-                            # Send content and embed in same message if possible, or separate
-                            # User asked for "part of embed text message", so use content=
-                            await target_channel.send(content=premessage, embed=embed, allowed_mentions=discord.AllowedMentions.none())
-                        except Exception:
-                             # Try sending separate if failed (e.g. content too long?)
-                             await target_channel.send(premessage, allowed_mentions=discord.AllowedMentions.none())
-                             await target_channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-                    else:
-                        await target_channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-                else:
-                    # Fallback for other channel types
-                    await interaction.followup.send(content=sanitize_mentions(self.embed_premessage.value), embed=embed, ephemeral=True)
-                    return
-
-            # Send ephemeral confirmation to the user (followup: already deferred)
-            success_embed = discord.Embed(
-                title="✅ Embed Sent",
-                description="Your embed has been sent to this channel!",
-                color=discord.Color.green()
-            )
-            await interaction.followup.send(embed=success_embed, ephemeral=True)
-            
-        except Exception as e:
-            error_embed = discord.Embed(
-                title="❌ Embed Creation Failed",
-                description=f"Error: {str(e)}",
-                color=discord.Color.red()
-            )
-            await safe_interaction_reply(interaction, embed=error_embed, ephemeral=True)
 
 class EmbedBuilder(commands.Cog):
     """Advanced embed creation and management commands"""
@@ -309,18 +26,21 @@ class EmbedBuilder(commands.Cog):
 
     @app_commands.command(
         name="embed",
-        description="Create a beautiful embed with an interactive form"
+        description="Build a custom embed with an interactive builder"
     )
     async def create_embed_interactive(self, interaction: discord.Interaction):
-        """Create a beautiful embed using an interactive modal form"""
+        """Open the interactive Components V2 embed builder."""
         try:
-            # Show the modal form to the user
-            modal = EmbedCreatorModal(self)
-            await interaction.response.send_modal(modal)
-            
+            view = EmbedBuilderDashboard(
+                self,
+                user_id=interaction.user.id,
+                channel_id=interaction.channel_id,
+                mode="create",
+            )
+            await interaction.response.send_message(view=view, ephemeral=True)
         except Exception as e:
             error_embed = discord.Embed(
-                title="❌ Error Opening Embed Creator",
+                title="❌ Error Opening Embed Builder",
                 description=f"Error: {str(e)}",
                 color=discord.Color.red()
             )
@@ -341,7 +61,7 @@ class EmbedBuilder(commands.Cog):
         message_id: Optional[str] = None,
         message_url: Optional[str] = None
     ):
-        """Edit an existing embed using a pre-populated modal form"""
+        """Open the embed builder pre-filled with an existing embed and edit it in place."""
         try:
             # Extract message ID from URL if provided
             target_message_id = None
@@ -435,9 +155,15 @@ class EmbedBuilder(commands.Cog):
             # Get the first embed from the message
             original_embed = target_message.embeds[0]
             
-            # Show the pre-populated modal form
-            modal = EmbedEditModal(self, target_message, original_embed, webhook)
-            await interaction.response.send_modal(modal)
+            builder = EmbedBuilderDashboard(
+                self,
+                user_id=interaction.user.id,
+                channel_id=target_channel.id,
+                mode="edit",
+                edit_target=(target_channel.id, target_message.id, webhook),
+            )
+            self._prefill_embed_builder(builder, target_message, original_embed)
+            await interaction.response.send_message(view=builder, ephemeral=True)
             
         except ValueError as e:
             error_embed = discord.Embed(
@@ -457,6 +183,45 @@ class EmbedBuilder(commands.Cog):
                 color=discord.Color.red()
             )
             await safe_interaction_reply(interaction, embed=error_embed, ephemeral=True)
+
+    def _prefill_embed_builder(self, builder, message, embed):
+        """Pre-fill a builder with the contents of an existing embed/message."""
+        builder.data["title"] = embed.title or None
+        builder.data["description"] = embed.description or None
+        if embed.color:
+            builder.data["color"] = f"#{embed.color.value:06x}"
+        if embed.footer and embed.footer.text:
+            builder.data["footer"] = embed.footer.text
+        builder.data["premessage"] = message.content or None
+        if embed.image:
+            builder.data["image_url"] = embed.image.url
+        if embed.thumbnail:
+            builder.data["thumbnail_url"] = embed.thumbnail.url
+        if embed.author and embed.author.name:
+            # Round-trip the existing author; the Author modal can replace it
+            # with a user ID (name + avatar are then taken from that user).
+            builder.data["author_name"] = embed.author.name
+            builder.data["author_icon"] = embed.author.icon_url
+        link_button = self._extract_link_button(message)
+        if link_button:
+            builder.data["button_label"] = link_button.label
+            builder.data["button_url"] = link_button.url
+        builder._render()
+
+    @staticmethod
+    def _extract_link_button(message):
+        """Find an existing link button on a message so the builder can prefill it."""
+        try:
+            for row in message.components:
+                for component in getattr(row, "children", []):
+                    if (
+                        getattr(component, "style", None) == discord.ButtonStyle.link
+                        and getattr(component, "url", None)
+                    ):
+                        return component
+        except Exception:
+            return None
+        return None
 
     # embedrules command has been removed
 

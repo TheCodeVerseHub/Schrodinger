@@ -20,6 +20,11 @@ All notable changes to this project will be documented in this file.
 - **Appeals System**:
     - Added a safety guard (`_guard_appeals_channel`) applied to every appeal send path that logs a prominent warning and blocks the send if appeal content ever targets a channel other than the configured appeals channel.
     - Accepting an appeal whose timeout already expired (or whose member left the server) now blocks the accept, marks the appeal as auto-resolved, disables the review buttons with a clear note and logs `APPEAL_AUTORESOLVED` to the appeals channel, instead of approving a punishment that no longer exists or erroring with "Member Not Found".
+- **Embed Builder**:
+    - `/embed` is now an interactive Components V2 builder: an ephemeral dashboard where every section (title, description, color, footer, pre-message, author, media, webhook, link button, target channel) has an Edit button that opens a modal for that section, plus Save & Cancel.
+    - Title is no longer required (description stays required).
+    - New options: author via user ID (name + avatar render automatically), webhook name and avatar URL for the send identity, image URL, thumbnail URL, target channel picker, and a bottom link button (label + URL, opens external links).
+    - `/editembed` opens the same builder pre-filled with the existing embed's values and saves changes in place.
 
 ## [2026-01-15]
 
