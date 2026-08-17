@@ -672,6 +672,158 @@ class AppealReviewDashboard(discord.ui.LayoutView):
         await interaction.response.send_message(view=dashboard, ephemeral=True)
 
 
+class AppealListView(discord.ui.LayoutView):
+    """Paginated Components V2 list of appeals, one Section per appeal.
+
+    Each appeal renders as a Section with a colored status badge and the
+    user's avatar thumbnail; long lists paginate with ◀/▶ buttons.
+    """
+
+    PAGE_SIZE = 10
+
+    STATUS_BADGES = {
+        "pending": "🟡 **Pending**",
+        "approved": "🟢 **Approved**",
+        "denied": "🔴 **Denied**",
+        "auto_resolved": "⚪ **Auto-Resolved**",
+    }
+
+    def __init__(
+        self,
+        cog: "Appeals",
+        rows: list[dict[str, Any]],
+        title: str,
+        *,
+        user_id: int,
+    ):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.rows = rows
+        self.title = title
+        self.user_id = user_id
+        self.page = 0
+        self.total_pages = max(
+            1, (len(rows) + self.PAGE_SIZE - 1) // self.PAGE_SIZE
+        )
+        self.message = None
+        self.expired = False
+        self._render()
+
+    def _render(self) -> None:
+        self.clear_items()
+
+        container = discord.ui.Container(
+            accent_color=discord.Color(APPEALS_PANEL_COLOR)
+        )
+        container.add_item(
+            discord.ui.TextDisplay(
+                f"## {self.title}\n"
+                f"{len(self.rows)} appeal{'s' if len(self.rows) != 1 else ''} • "
+                "processed via the interactive buttons in staff notifications"
+            )
+        )
+        container.add_item(discord.ui.Separator())
+
+        page_rows = self.rows[
+            self.page * self.PAGE_SIZE : (self.page + 1) * self.PAGE_SIZE
+        ]
+        for row in page_rows:
+            container.add_item(
+                discord.ui.Section(
+                    discord.ui.TextDisplay(self._section_text(row)),
+                    accessory=self._avatar(row),
+                )
+            )
+
+        if self.total_pages > 1:
+            container.add_item(discord.ui.Separator())
+            container.add_item(
+                discord.ui.TextDisplay(f"Page {self.page + 1} of {self.total_pages}")
+            )
+
+        self.add_item(container)
+
+        if self.expired:
+            return
+
+        nav = discord.ui.ActionRow()
+        prev = discord.ui.Button(
+            label="◀",
+            style=discord.ButtonStyle.primary,
+            custom_id="appeals:prev",
+            disabled=self.page <= 0,
+        )
+        prev.callback = self._go_prev  # type: ignore[assignment]
+        nxt = discord.ui.Button(
+            label="▶",
+            style=discord.ButtonStyle.primary,
+            custom_id="appeals:next",
+            disabled=self.page >= self.total_pages - 1,
+        )
+        nxt.callback = self._go_next  # type: ignore[assignment]
+        nav.add_item(prev)
+        nav.add_item(nxt)
+        self.add_item(nav)
+
+    def _section_text(self, row: dict[str, Any]) -> str:
+        badge = self.STATUS_BADGES.get(
+            str(row.get("status") or "").lower(),
+            f"⚪ **{str(row.get('status') or 'unknown').title()}**",
+        )
+        lines = [
+            f"### Appeal #{row['appeal_id']}",
+            f"{badge} • <@{row['user_id']}>",
+            f"**Reason:** {_truncate(sanitize_mentions(str(row.get('reason') or 'No reason provided')), 300)}",
+            f"**Time:** {row.get('timestamp') or 'Unknown'}",
+        ]
+        if row.get("review_reason") or row.get("reviewed_by"):
+            reviewer = f"<@{row['reviewed_by']}>" if row.get("reviewed_by") else "staff"
+            lines.append(
+                f"**Decision:** {_truncate(sanitize_mentions(str(row.get('review_reason') or 'No reason provided')), 200)} • Reviewed by {reviewer}"
+            )
+        return "\n".join(lines)
+
+    def _avatar(self, row: dict[str, Any]) -> discord.ui.Thumbnail:
+        url = row.get("avatar_url")
+        if not url and self.cog.bot.user and self.cog.bot.user.display_avatar:
+            url = self.cog.bot.user.display_avatar.url
+        return discord.ui.Thumbnail(
+            url or "https://cdn.discordapp.com/embed/avatars/0.png",
+            description=f"Appeal #{row['appeal_id']}",
+        )
+
+    async def _ensure_allowed(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id == self.user_id:
+            return True
+        await interaction.response.send_message(
+            "This appeal list is not for you.", ephemeral=True
+        )
+        return False
+
+    async def _go_prev(self, interaction: discord.Interaction):
+        if self.expired or not await self._ensure_allowed(interaction):
+            return
+        self.page = max(0, self.page - 1)
+        self._render()
+        await interaction.response.edit_message(view=self)
+
+    async def _go_next(self, interaction: discord.Interaction):
+        if self.expired or not await self._ensure_allowed(interaction):
+            return
+        self.page = min(self.total_pages - 1, self.page + 1)
+        self._render()
+        await interaction.response.edit_message(view=self)
+
+    async def on_timeout(self) -> None:
+        self.expired = True
+        try:
+            self._render()
+            if self.message is not None:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
+
 class Appeals(commands.Cog):
     """Unban appeal system with auto-DM for moderation actions"""
 
@@ -2682,10 +2834,8 @@ class Appeals(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        embed = discord.Embed(
-            title=f"{status.title()} Appeals", color=APPEALS_PANEL_COLOR
-        )
-
+        # Resolve user display info (cached guild lookups, then fetch_user).
+        rows = []
         for appeal in appeals:
             (
                 appeal_id,
@@ -2696,29 +2846,32 @@ class Appeals(commands.Cog):
                 review_reason,
                 reviewed_by,
             ) = appeal
-            try:
-                user = await self.bot.fetch_user(user_id)
-                user_name = f"{user} ({user_id})"
-            except:
-                user_name = f"Unknown ({user_id})"
-
-            decision_line = ""
-            if appeal_status in ("approved", "denied") and (
-                review_reason or reviewed_by
-            ):
-                reviewer = f"<@{reviewed_by}>" if reviewed_by else "staff"
-                decision_line = f"\n**Decision reason:** {_truncate(str(review_reason or 'No reason provided'), 200)}\n**Reviewed by:** {reviewer}"
-
-            embed.add_field(
-                name=f"Appeal #{appeal_id}",
-                value=f"**User:** {user_name}\n**Status:** {appeal_status.title()}\n**Reason:** {sanitize_mentions(reason)[:100]}{'...' if len(reason) > 100 else ''}\n**Time:** {timestamp}{decision_line}",
-                inline=False,
+            user = self.bot.get_user(user_id)
+            if user is None:
+                try:
+                    user = await self.bot.fetch_user(user_id)
+                except Exception:
+                    user = None
+            rows.append(
+                {
+                    "appeal_id": appeal_id,
+                    "user_id": user_id,
+                    "reason": reason,
+                    "status": appeal_status or "pending",
+                    "timestamp": timestamp,
+                    "review_reason": review_reason,
+                    "reviewed_by": reviewed_by,
+                    "avatar_url": user.display_avatar.url if user else None,
+                }
             )
 
-        embed.set_footer(
-            text=f"Appeals are processed using interactive buttons in staff notifications"
+        view = AppealListView(
+            self, rows, f"{status.title()} Appeals", user_id=ctx.author.id
         )
-        await ctx.send(embed=embed)
+        message = await ctx.send(
+            view=view, allowed_mentions=discord.AllowedMentions.none()
+        )
+        view.message = message
 
     @commands.hybrid_command(name="appealinfo")
     @commands.has_permissions(administrator=True)
