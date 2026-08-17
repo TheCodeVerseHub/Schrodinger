@@ -1,0 +1,2 @@
+- Remove bugged ruff errors.
+- make a command to mute+warn at same time ?sybau ig.
