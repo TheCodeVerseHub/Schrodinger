@@ -228,24 +228,27 @@ class EmbedBuilder(commands.Cog):
     @commands.group(name="ls", invoke_without_command=True)
     async def ls_command(self, ctx):
         """List utilities for the server"""
-        embed = discord.Embed(
-            title="Server Listing Utilities",
-            description="Inspect roles, channels, and permissions on this server.",
-            color=0x5865F2
+        commands_list = [
+            "`?ls channels` — List all channels (categories, text, voice)",
+            "`?ls channels ?w <Target> <Perm>` — Find channels where User/Role has Permission",
+            "`?ls categories [?w ...]` — List categories (optional: filter by permission)",
+            "`?ls role <role>` — View full details and permissions of a role",
+            "`?ls members <role>` — List members who have a specific role",
+            "`?ls perm <permission>` — See which roles have a specific permission",
+            "`?ls bots` — List all bots in the server",
+            "`?ls boosters` — List server boosters",
+            "`?ls perms` — List roles that have permissions",
+            "`?ls noperms` — List cosmetic roles (no permissions)",
+        ]
+        await _ls_send(
+            ctx,
+            _ls_container(
+                "Server Listing Utilities",
+                "Inspect roles, channels, and permissions on this server.",
+                commands_list,
+                footer="Tip: Use Role ID with ?ls role <id> to avoid pinging members!",
+            ),
         )
-        embed.add_field(name="?ls channels", value="List all channels (categories, text, voice)", inline=False)
-        embed.add_field(name="?ls channels ?w <Target> <Perm>", value="Find channels where User/Role has Permission", inline=False)
-        embed.add_field(name="?ls categories [?w ...]", value="List categories (optional: filter by permission)", inline=False)
-        embed.add_field(name="?ls role <role>", value="View full details and permissions of a role", inline=False)
-        embed.add_field(name="?ls members <role>", value="List members who have a specific role", inline=False)
-        embed.add_field(name="?ls perm <permission>", value="See which roles have a specific permission", inline=False)
-        embed.add_field(name="?ls bots", value="List all bots in the server", inline=False)
-        embed.add_field(name="?ls boosters", value="List server boosters", inline=False)
-        embed.add_field(name="?ls perms", value="List roles that have permissions", inline=False)
-        embed.add_field(name="?ls noperms", value="List cosmetic roles (no permissions)", inline=False)
-        
-        embed.set_footer(text="Tip: Use Role ID with ?ls role <id> to avoid pinging members!")
-        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @ls_command.command(name="role")
     async def ls_role(self, ctx, role: discord.Role):
@@ -266,68 +269,82 @@ class EmbedBuilder(commands.Cog):
 
         # Create list of enabled permissions
         enabled_perms = [p[0].replace('_', ' ').title() for p in perms if p[1]]
-        
-        embed = discord.Embed(title=f"Role: {role.name}", color=0x5865F2)
-        embed.add_field(name="ID", value=str(role.id), inline=True)
-        embed.add_field(name="Color", value=str(role.color), inline=True)
-        embed.add_field(name="Position", value=str(role.position), inline=True)
-        embed.add_field(name="Integrated", value=str(role.is_integration()), inline=True)
-        embed.add_field(name="Hoisted", value=str(role.hoist), inline=True)
-        embed.add_field(name="Mentionable", value=str(role.mentionable), inline=True)
-        
-        embed.add_field(name="Members", value=f"{len(role.members)} members", inline=True)
-        embed.add_field(name="Created", value=f"<t:{int(role.created_at.timestamp())}:R>", inline=True)
-        
+
+        container = discord.ui.Container(accent_color=discord.Color(LS_COLOR))
+        container.add_item(discord.ui.TextDisplay(f"## Role: {role.name}"))
+        container.add_item(discord.ui.Separator())
+
+        info = [
+            f"**ID:** `{role.id}`",
+            f"**Color:** {role.color}",
+            f"**Position:** {role.position}",
+            f"**Integrated:** {role.is_integration()}",
+            f"**Hoisted:** {role.hoist}",
+            f"**Mentionable:** {role.mentionable}",
+            f"**Members:** {len(role.members)}",
+            f"**Created:** <t:{int(role.created_at.timestamp())}:R>",
+        ]
+        container.add_item(discord.ui.TextDisplay("### Info\n" + "\n".join(info)))
+        container.add_item(discord.ui.Separator())
+
         if perms.administrator:
-            embed.add_field(name="Fatal Permission", value="**ADMINISTRATOR** (Bypasses all other permissions)", inline=False)
-        
-        if key_perms and not perms.administrator:
-            embed.add_field(name="Key Permissions", value=", ".join(key_perms), inline=False)
+            container.add_item(
+                discord.ui.TextDisplay(
+                    "### ⚠️ Fatal Permission\n**ADMINISTRATOR** (bypasses all other permissions)"
+                )
+            )
+            container.add_item(discord.ui.Separator())
+        elif key_perms:
+            container.add_item(
+                discord.ui.TextDisplay("### Key Permissions\n" + ", ".join(key_perms))
+            )
+            container.add_item(discord.ui.Separator())
 
-        # Truncate full list if too long
-        perm_list_str = ", ".join(enabled_perms)
-        if len(perm_list_str) > 1000:
-            perm_list_str = perm_list_str[:1000] + "..."
-        
         if not enabled_perms:
-            perm_list_str = "None (Cosmetic Role)"
+            container.add_item(
+                discord.ui.TextDisplay("### All Permissions\nNone (cosmetic role)")
+            )
+        else:
+            perm_lines = [f"• {p}" for p in enabled_perms]
+            for chunk in _ls_chunk_lines(perm_lines):
+                container.add_item(
+                    discord.ui.TextDisplay("### All Permissions\n" + chunk)
+                )
 
-        embed.add_field(name="All Permissions", value=perm_list_str, inline=False)
-        
-        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        await _ls_send(ctx, container)
 
     @ls_command.command(name="members")
     async def ls_members(self, ctx, *, role: discord.Role):
-        """Show how many people have a specific role and list them if < 20"""
+        """Show how many people have a specific role and list them"""
         count = len(role.members)
-        
-        embed = discord.Embed(
-            title=f"Members in Role: {role.name}",
-            color=role.color
-        )
-        embed.add_field(name="Total Members", value=str(count), inline=False)
-        embed.add_field(name="Role ID", value=str(role.id), inline=False)
-        
         if count == 0:
-            embed.description = "No members have this role."
-        elif count < 20:
-            member_mentions = [member.mention for member in role.members]
-            # Join with a nice separator
-            embed.description = "\n".join(member_mentions)
+            lines = []
+            empty_text = "No members have this role."
+        elif count <= 50:
+            lines = [member.mention for member in role.members]
+            empty_text = None
         else:
-            embed.description = f"There are {count} members with this role. (List only shown if < 20)"
-            
-        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            lines = []
+            empty_text = f"There are {count} members with this role. (List only shown if up to 50)"
+        await _ls_send(
+            ctx,
+            _ls_container(
+                f"Members in Role: {role.name}",
+                f"**Total:** {count} • **Role ID:** `{role.id}`",
+                lines,
+                empty_text=empty_text,
+            ),
+        )
 
     @ls_command.command(name="perm")
     async def ls_perm(self, ctx, *, perm_query: str):
         """List roles that have a specific permission"""
         # Normalize query
         query = perm_query.lower().replace(" ", "_")
-        
+
         # Valid permissions map
         valid_perms = dir(discord.Permissions.none())
-        
+
         # Find match
         matched_perm = None
         for p in valid_perms:
@@ -336,7 +353,7 @@ class EmbedBuilder(commands.Cog):
             if p == query or p.replace("_", "") == query.replace("_", ""):
                 matched_perm = p
                 break
-        
+
         if not matched_perm:
             # Fuzzy-ish fallback
             matches = [p for p in valid_perms if not p.startswith("_") and query in p]
@@ -353,34 +370,24 @@ class EmbedBuilder(commands.Cog):
             # Administrator implies all permissions
             if role.permissions.administrator or getattr(role.permissions, matched_perm):
                 roles_with_perm.append(role)
-        
+
         roles_with_perm.sort(key=lambda r: r.position, reverse=True)
-        
-        embed = discord.Embed(
-            title=f"Roles with '{matched_perm.replace('_', ' ').title()}'",
-            description=f"Found {len(roles_with_perm)} roles.",
-            color=0x5865F2
-        )
-        
-        chunk = ""
+
+        lines = []
         for role in roles_with_perm:
             # Mark if it's via admin or direct
             note = " (Admin)" if role.permissions.administrator and matched_perm != "administrator" else ""
-            line = f"{role.mention}{note}\n"
-            
-            if len(chunk) + len(line) > 4000:
-                embed.description = chunk
-                await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-                chunk = line
-                embed = discord.Embed(title="Continued...", color=0x5865F2)
-            else:
-                chunk += line
-                
-        if chunk:
-            embed.description = chunk
-            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        elif not roles_with_perm:
-            await ctx.send(f"No roles found with `{matched_perm}`.")
+            lines.append(f"{role.mention}{note}")
+
+        await _ls_send(
+            ctx,
+            _ls_container(
+                f"Roles with '{matched_perm.replace('_', ' ').title()}'",
+                f"Found {len(roles_with_perm)} roles.",
+                lines,
+                empty_text="No roles found.",
+            ),
+        )
 
     @ls_command.command(name="noperms")
     async def ls_noperms(self, ctx):
@@ -391,68 +398,50 @@ class EmbedBuilder(commands.Cog):
             # Check if role has NO permissions
             if role.permissions.value == 0:
                 roles.append(role)
-        
+
         # Sort by position (reverse = highest first)
         roles.sort(key=lambda r: r.position, reverse=True)
-        
+
         if not roles:
             await ctx.send("No cosmetic-only roles found.")
             return
 
-        # Create embed
-        embed = discord.Embed(
-            title="Cosmetic Roles (No Permissions)",
-            description="These roles have 0 permission value.",
-            color=0x5865F2
+        lines = [f"{r.mention} (Pos: {r.position})" for r in roles]
+        await _ls_send(
+            ctx,
+            _ls_container(
+                "Cosmetic Roles (No Permissions)",
+                "These roles have 0 permission value.",
+                lines,
+                footer=f"Total: {len(roles)} roles",
+            ),
         )
-        
-        # Chunking for description limit
-        chunk = ""
-        count = 0
-        for role in roles:
-            line = f"{role.mention} (Pos: {role.position})\n"
-            if len(chunk) + len(line) > 4000:
-                embed.description = chunk
-                await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-                chunk = line
-                embed = discord.Embed(title="Continued...", color=0x5865F2)
-            else:
-                chunk += line
-            count += 1
-            
-        if chunk:
-            embed.description = chunk
-            embed.set_footer(text=f"Total: {count} roles")
-            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @ls_command.command(name="perms")
     async def ls_perms(self, ctx, *, role: discord.Role = None):
         """List roles that have at least one permission or permissions for a specific role"""
-        
+
         if role:
             # List permissions for the specific role
             perms = []
             for perm, value in role.permissions:
                 if value:
                     perms.append(perm.replace('_', ' ').title())
-            
+
             if not perms:
                 await ctx.send(f"{role.mention} has no active permissions.", allowed_mentions=discord.AllowedMentions.none())
                 return
-            
-            perms.sort()
-            
-            perms_chunked = [perms[i:i + 20] for i in range(0, len(perms), 20)]
 
-            for i, chunk in enumerate(perms_chunked):
-                embed = discord.Embed(
-                    title=f"Permissions for {role.name}" if i == 0 else f"Permissions for {role.name} (Continued)",
-                    description="\n".join(f"• {p}" for p in chunk),
-                    color=role.color if role.color.value != 0 else 0x5865F2
-                )
-                if i == len(perms_chunked) - 1:
-                    embed.set_footer(text=f"Total: {len(perms)} permissions")
-                await ctx.send(embed=embed)
+            perms.sort()
+            await _ls_send(
+                ctx,
+                _ls_container(
+                    f"Permissions for {role.name}",
+                    None,
+                    [f"• {p}" for p in perms],
+                    footer=f"Total: {len(perms)} permissions",
+                ),
+            )
             return
 
         # List all roles with permissions
@@ -461,42 +450,28 @@ class EmbedBuilder(commands.Cog):
             if r.is_default(): continue
             if r.permissions.value != 0:
                 roles.append(r)
-        
+
         roles.sort(key=lambda r: r.position, reverse=True)
-        
+
         if not roles:
             await ctx.send("No roles with permissions found (unlikely).")
             return
 
-        embed = discord.Embed(
-            title="Functional Roles (With Permissions)",
-            description="These roles have at least one permission enabled.",
-            color=0x5865F2
+        lines = [f"{r.mention} (Pos: {r.position})" for r in roles]
+        await _ls_send(
+            ctx,
+            _ls_container(
+                "Functional Roles (With Permissions)",
+                "These roles have at least one permission enabled.",
+                lines,
+                footer=f"Total: {len(roles)} roles",
+            ),
         )
-        
-        chunk = ""
-        count = 0
-        
-        for r in roles:
-            line = f"{r.mention} (Pos: {r.position})\n"
-            if len(chunk) + len(line) > 4000:
-                embed.description = chunk
-                await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-                chunk = line
-                embed = discord.Embed(title="Continued...", color=0x5865F2)
-            else:
-                chunk += line
-            count += 1
-            
-        if chunk:
-            embed.description = chunk
-            embed.set_footer(text=f"Total: {count} roles")
-            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @ls_command.command(name="channels")
     async def ls_channels(self, ctx, *args):
         """List channels. Usage: ?ls channels [?w <Role/User> <Permission>]"""
-        
+
         # Check for ?w argument for filtering
         full_args = " ".join(args)
         if "?w" in full_args:
@@ -506,16 +481,16 @@ class EmbedBuilder(commands.Cog):
                 params = full_args.split("?w", 1)[1].strip()
                 if not params:
                     raise ValueError("Missing arguments after ?w")
-                
+
                 # We expect the last word to be the permission, and everything before it to be the target
                 # This allows targets with spaces in names if distinct enough, though mentions/IDs are safer.
                 match_parts = params.rsplit(" ", 1)
                 if len(match_parts) < 2:
                     raise ValueError("Please provide a Target and a Permission (e.g., Everyone SendMessage)")
-                
+
                 target_str = match_parts[0].strip()
                 perm_str = match_parts[1].strip()
-                
+
                 # Resolve Target
                 target = None
                 if target_str.lower() in ["everyone", "@everyone", "here", "@here"]:
@@ -530,7 +505,7 @@ class EmbedBuilder(commands.Cog):
                         except commands.BadArgument:
                             await ctx.send(f"❌ Could not find Role or Member named `{target_str}`.")
                             return
-                
+
                 # Resolve Permission
                 # Map common aliases
                 perm_map = {
@@ -562,19 +537,19 @@ class EmbedBuilder(commands.Cog):
                     'managemessage': 'manage_messages',
                     'managemessages': 'manage_messages'
                 }
-                
+
                 # Normalize input
                 clean_input = perm_str.lower().replace(" ", "").replace("_", "")
-                
+
                 # Get all real permissions using standard iteration
                 valid_perms = [name for name, value in discord.Permissions()]
-                
+
                 perm_attr = None
-                
+
                 # 1. Map Check (Trust the map)
                 if clean_input in perm_map:
                     perm_attr = perm_map[clean_input]
-                
+
                 # 2. Direct name check (snake case normalized)
                 # This covers "manage_channels" -> "manage_channels"
                 if not perm_attr:
@@ -589,7 +564,7 @@ class EmbedBuilder(commands.Cog):
                         if vp.replace("_", "") == clean_input:
                             perm_attr = vp
                             break
-                            
+
                 # 4. Fuzzy / Substring match (DANGEROUS but helpful)
                 if not perm_attr:
                     # Finds "manage" -> "manage_channels" (first match)
@@ -598,7 +573,7 @@ class EmbedBuilder(commands.Cog):
                     if matches:
                         # Prefer shorter matches or exact start matches
                         # e.g. "ban" matches "ban_members"
-                        perm_attr = matches[0] 
+                        perm_attr = matches[0]
                     else:
                         await ctx.send(f"❌ Invalid permission `{perm_str}`.")
                         return
@@ -609,94 +584,82 @@ class EmbedBuilder(commands.Cog):
                     # Exclude categories
                     if isinstance(channel, discord.CategoryChannel):
                         continue
-                        
+
                     # channel.permissions_for handles overwrites, roles, admin implications
                     perms = channel.permissions_for(target)
                     if getattr(perms, perm_attr, False):
                         matched.append(channel)
-                
+
                 matched.sort(key=lambda c: c.position)
-                
+
                 if not matched:
                     await ctx.send(f"🚫 No channels found where {target.mention} has `{perm_attr}` permission.")
                     return
-                
-                # Build Embed
-                embed = discord.Embed(
-                    title=f"Channel Audit: {perm_attr}",
-                    description=f"Showing channels where **{target.mention}** can `{perm_attr}`.",
-                    color=0x5865F2
-                )
-                
+
                 # Build list text
                 lines = [f"{c.mention} (`{c.id}`)" for c in matched]
-                full_text = "\n".join(lines)
-                
-                # Handle large output
-                if len(full_text) > 4000:
-                    chunks = [full_text[i:i+4000] for i in range(0, len(full_text), 4000)]
-                    embed.description = chunks[0] + "..."
-                    await ctx.send(embed=embed)
-                    if len(chunks) > 1:
-                        await ctx.send(f"... {len(matched) - len(chunks[0].splitlines())} more channels omitted.")
-                else:
-                    embed.description = full_text
-                    await ctx.send(embed=embed)
-                    
+                await _ls_send(
+                    ctx,
+                    _ls_container(
+                        f"Channel Audit: {perm_attr}",
+                        f"Showing channels where **{target.mention}** can `{perm_attr}`.",
+                        lines,
+                        empty_text="No channels found.",
+                    ),
+                )
+
             except Exception as e:
                 await ctx.send(f"Error parsing arguments: {str(e)}\nUsage: `?ls channels ?w Everyone SendMessage`")
             return
 
         # Default: List all channels grouped by category
         channels = sorted(ctx.guild.channels, key=lambda c: c.position)
-        
+
         categories = {}
         no_category = []
-        
+
         for c in channels:
             if c.category:
                 if c.category not in categories:
                     categories[c.category] = []
                 categories[c.category].append(c)
             elif isinstance(c, discord.CategoryChannel):
-                # We can list categories separately or as headers. 
-                # Let's verify if 'categories' dict keys cover this.
                 if c not in categories:
                     categories[c] = [] # Ensure category exists even if empty
             else:
                 no_category.append(c)
-                
-        embed = discord.Embed(title=f"Channels in {ctx.guild.name}", color=0x5865F2)
-        
-        description = ""
-        
-        # List non-categorized first
+
+        container = discord.ui.Container(accent_color=discord.Color(LS_COLOR))
+        container.add_item(discord.ui.TextDisplay(f"## Channels in {ctx.guild.name}"))
+        container.add_item(discord.ui.Separator())
+
+        text_lines = []
         if no_category:
-            description += "**Uncategorized**\n"
-            for c in no_category:
-                description += f"{c.mention}\n"
-            description += "\n"
-            
+            text_lines.append("### Uncategorized")
+            text_lines.extend(c.mention for c in no_category)
+
         # Sort categories by position
         sorted_cats = sorted(categories.keys(), key=lambda x: x.position)
-        
+
         for cat in sorted_cats:
             chans = categories[cat]
-            description += f"**{cat.name.upper()}**\n"
-            for c in chans:
-                description += f"  └ {c.mention}\n"
-            description += "\n"
-            
-        if len(description) > 4000:
-            description = description[:4000] + "\n...(truncated)"
-            
-        embed.description = description
-        await ctx.send(embed=embed)
+            text_lines.append(f"### {cat.name.upper()}")
+            text_lines.extend(f"└ {c.mention}" for c in chans)
+
+        if not text_lines:
+            container.add_item(
+                discord.ui.TextDisplay("*No channels in this server.*")
+            )
+        else:
+            for chunk in _ls_chunk_lines(text_lines):
+                container.add_item(discord.ui.TextDisplay(chunk))
+
+        await _ls_send(ctx, container)
 
     @ls_command.command(name="categories", aliases=["category"])
     async def ls_categories(self, ctx, *args):
         """List categories. Usage: ?ls categories [?w <Role/User> <Permission>]"""
-        
+
         # Check for ?w argument for filtering
         full_args = " ".join(args)
         if "?w" in full_args:
@@ -706,14 +669,14 @@ class EmbedBuilder(commands.Cog):
                 params = full_args.split("?w", 1)[1].strip()
                 if not params:
                     raise ValueError("Missing arguments after ?w")
-                
+
                 match_parts = params.rsplit(" ", 1)
                 if len(match_parts) < 2:
                     raise ValueError("Please provide a Target and a Permission")
-                
+
                 target_str = match_parts[0].strip()
                 perm_str = match_parts[1].strip()
-                
+
                 # Resolve Target
                 target = None
                 if target_str.lower() in ["everyone", "@everyone", "here", "@here"]:
@@ -727,7 +690,7 @@ class EmbedBuilder(commands.Cog):
                         except commands.BadArgument:
                             await ctx.send(f"❌ Could not find Role or Member named `{target_str}`.")
                             return
-                
+
                 # Resolve Permission
                 perm_map = {
                     'sendmessage': 'send_messages',
@@ -758,14 +721,14 @@ class EmbedBuilder(commands.Cog):
                     'managemessage': 'manage_messages',
                     'managemessages': 'manage_messages'
                 }
-                
+
                 clean_input = perm_str.lower().replace(" ", "").replace("_", "")
                 valid_perms = [name for name, value in discord.Permissions()]
-                
+
                 perm_attr = None
                 if clean_input in perm_map:
                     perm_attr = perm_map[clean_input]
-                
+
                 if not perm_attr:
                      snake_input = perm_str.lower().replace(" ", "_")
                      if snake_input in valid_perms:
@@ -776,11 +739,11 @@ class EmbedBuilder(commands.Cog):
                         if vp.replace("_", "") == clean_input:
                             perm_attr = vp
                             break
-                            
+
                 if not perm_attr:
                     matches = [p for p in valid_perms if clean_input in p.replace("_", "")]
                     if matches:
-                        perm_attr = matches[0] 
+                        perm_attr = matches[0]
                     else:
                         await ctx.send(f"❌ Invalid permission `{perm_str}`.")
                         return
@@ -791,89 +754,73 @@ class EmbedBuilder(commands.Cog):
                     perms = channel.permissions_for(target)
                     if getattr(perms, perm_attr, False):
                         matched.append(channel)
-                
+
                 matched.sort(key=lambda c: c.position)
-                
+
                 if not matched:
                     await ctx.send(f"🚫 No categories found where {target.mention} has `{perm_attr}` permission.")
                     return
-                
-                embed = discord.Embed(
-                    title=f"Category Audit: {perm_attr}",
-                    description=f"Showing categories where **{target.mention}** can `{perm_attr}`.",
-                    color=0x5865F2
-                )
-                
+
                 lines = [f"{c.name.upper()} (`{c.id}`)" for c in matched]
-                full_text = "\n".join(lines)
-                
-                if len(full_text) > 4000:
-                    chunks = [full_text[i:i+4000] for i in range(0, len(full_text), 4000)]
-                    embed.description = chunks[0] + "..."
-                    await ctx.send(embed=embed)
-                else:
-                    embed.description = full_text
-                    await ctx.send(embed=embed)
-                    
+                await _ls_send(
+                    ctx,
+                    _ls_container(
+                        f"Category Audit: {perm_attr}",
+                        f"Showing categories where **{target.mention}** can `{perm_attr}`.",
+                        lines,
+                        empty_text="No categories found.",
+                    ),
+                )
+
             except Exception as e:
                 await ctx.send(f"Error parsing arguments: {str(e)}")
             return
 
         # Default: List all categories
         categories = sorted(ctx.guild.categories, key=lambda c: c.position)
-        
-        embed = discord.Embed(title=f"Categories in {ctx.guild.name}", color=0x5865F2)
-        
         lines = [f"{c.name} (`{c.id}`)" for c in categories]
-        full_text = "\n".join(lines)
-        
-        if len(full_text) > 4000:
-             embed.description = full_text[:4000] + "\n...(truncated)"
-        else:
-             embed.description = full_text or "No categories found."
-             
-        await ctx.send(embed=embed)
+        await _ls_send(
+            ctx,
+            _ls_container(
+                f"Categories in {ctx.guild.name}",
+                None,
+                lines,
+                empty_text="No categories found.",
+            ),
+        )
 
     @ls_command.command(name="bots")
     async def ls_bots(self, ctx):
         """List all bots in the server"""
         bots = [m for m in ctx.guild.members if m.bot]
-        
-        embed = discord.Embed(
-            title=f"Bots in {ctx.guild.name} ({len(bots)})",
-            color=0x5865F2
+        lines = [f"{b.mention} {b.top_role.mention if b.top_role else ''}" for b in bots]
+        await _ls_send(
+            ctx,
+            _ls_container(
+                f"Bots in {ctx.guild.name} ({len(bots)})",
+                None,
+                lines,
+                empty_text="No bots in this server.",
+            ),
         )
-        
-        description = ""
-        for bot in bots:
-            description += f"{bot.mention} {bot.top_role.mention if bot.top_role else ''}\n"
-            
-        if len(description) > 4000:
-             description = description[:4000] + "..."
-             
-        embed.description = description
-        await ctx.send(embed=embed)
 
     @ls_command.command(name="boosters")
     async def ls_boosters(self, ctx):
         """List current server boosters"""
         boosters = ctx.guild.premium_subscribers
-        
-        if not boosters:
-             embed = discord.Embed(
-                title=f"Server Boosters (Tier {ctx.guild.premium_tier})",
-                description="This server has no boosters yet!",
-                color=0x5865F2
-             )
-             await ctx.send(embed=embed)
-             return
 
-        embed = discord.Embed(
-            title=f"Server Boosters ({ctx.guild.premium_subscription_count} boosts)",
-            description=f"Current Level: **Tier {ctx.guild.premium_tier}**",
-            color=0x5865F2
-        )
-        
+        if not boosters:
+            await _ls_send(
+                ctx,
+                _ls_container(
+                    f"Server Boosters (Tier {ctx.guild.premium_tier})",
+                    None,
+                    [],
+                    empty_text="This server has no boosters yet!",
+                ),
+            )
+            return
+
         lines = []
         for member in boosters:
             # Format time since boost
@@ -882,9 +829,72 @@ class EmbedBuilder(commands.Cog):
             else:
                 timestamp = "Unknown time"
             lines.append(f"• {member.mention} - {timestamp}")
-            
-        embed.add_field(name="Current Boosters", value="\n".join(lines) or "None", inline=False)
-        await ctx.send(embed=embed)
+
+        await _ls_send(
+            ctx,
+            _ls_container(
+                f"Server Boosters ({ctx.guild.premium_subscription_count} boosts)",
+                f"Current Level: **Tier {ctx.guild.premium_tier}**",
+                lines,
+            ),
+        )
+
+
+LS_COLOR = 0x5865F2
+
+
+def _ls_chunk_lines(lines: list[str], max_chars: int = 1500) -> list[str]:
+    """Split display lines into chunks that fit a single TextDisplay safely."""
+    chunks: list[str] = []
+    current: list[str] = []
+    size = 0
+    for line in lines:
+        if current and size + len(line) + 1 > max_chars:
+            chunks.append("\n".join(current))
+            current, size = [], 0
+        current.append(line)
+        size += len(line) + 1
+    if current:
+        chunks.append("\n".join(current))
+    return chunks
+
+
+def _ls_container(
+    title: str,
+    intro: Optional[str] = None,
+    lines: Optional[list[str]] = None,
+    empty_text: Optional[str] = None,
+    footer: Optional[str] = None,
+) -> discord.ui.Container:
+    """Build a Components V2 listing container.
+
+    ``lines`` are chunked into TextDisplays so no truncation hack is needed,
+    no matter how long the list is.
+    """
+    container = discord.ui.Container(accent_color=discord.Color(LS_COLOR))
+    container.add_item(discord.ui.TextDisplay(f"## {title}"))
+    if intro:
+        container.add_item(discord.ui.TextDisplay(intro))
+    container.add_item(discord.ui.Separator())
+
+    if lines:
+        for chunk in _ls_chunk_lines(lines):
+            container.add_item(discord.ui.TextDisplay(chunk))
+    else:
+        container.add_item(discord.ui.TextDisplay(empty_text or "*Nothing to show.*"))
+
+    if footer:
+        container.add_item(discord.ui.Separator())
+        container.add_item(discord.ui.TextDisplay(f"*{footer}*"))
+    return container
+
+
+async def _ls_send(ctx, container: discord.ui.Container) -> None:
+    """Send a Components V2 container as a standalone message."""
+    view = discord.ui.LayoutView(timeout=None)
+    view.add_item(container)
+    await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
+
 
 async def setup(bot):
     await bot.add_cog(EmbedBuilder(bot))
