@@ -71,15 +71,15 @@ class WebhookManager:
                 logger.error(f"Failed to get/create webhook for channel {channel.id}: {e}")
                 return None
 
-    async def send(self, channel: discord.TextChannel, embed: discord.Embed) -> bool:
+    async def send(self, channel: discord.TextChannel, embed: Optional[discord.Embed] = None, view: Optional[discord.ui.View] = None) -> bool:
         """
-        Sends an embed via webhook. Falls back to channel.send on failure.
-        Returns True if successful, False otherwise.
+        Sends an embed and/or Components V2 view via webhook. Falls back to
+        channel.send on failure. Returns True if successful, False otherwise.
         """
         if self.bot.user is None:
             # Fallback if bot user info isn't available
             try:
-                await channel.send(embed=embed)
+                await channel.send(embed=embed, view=view)
                 return True
             except Exception as e:
                 logger.error(f"Fallback send failed for {channel.id}: {e}")
@@ -91,7 +91,8 @@ class WebhookManager:
             try:
                 # wait=True to ensure we catch HTTP errors immediately
                 await webhook.send(
-                    embed=embed, 
+                    embed=embed,
+                    view=view,
                     username=self.bot.user.display_name, 
                     avatar_url=self.bot.user.display_avatar.url, 
                     wait=True
@@ -108,7 +109,8 @@ class WebhookManager:
                 if webhook:
                     try:
                         await webhook.send(
-                            embed=embed, 
+                            embed=embed,
+                            view=view,
                             username=self.bot.user.display_name, 
                             avatar_url=self.bot.user.display_avatar.url, 
                             wait=True
@@ -127,7 +129,7 @@ class WebhookManager:
         
         # Fallback to direct bot message
         try:
-            await channel.send(embed=embed)
+            await channel.send(embed=embed, view=view)
             return True
         except Exception as e:
             logger.error(f"Fallback send failed for {channel.id}: {e}")

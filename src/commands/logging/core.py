@@ -237,19 +237,24 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
                  )
              return
 
-        # Normal Embed logs
-        embed = await self.formatter.create_log_embed(log_item)
-        if embed:
-            success = await self.webhook_manager.send(channel, embed)
-            
-            if success and log_item.get("log_id"):
-                try:
-                    conn = sqlite3.connect(DATABASE_NAME)
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE bot_logs SET sent_to_discord = 1 WHERE id = ?", (log_item["log_id"],))
-                    conn.commit()
-                    conn.close()
-                except: pass
+        # Normal logs: moderation events render as Components V2 cards,
+        # everything else falls back to classic embeds.
+        view = await self.formatter.create_log_view(log_item)
+        if view is not None:
+            success = await self.webhook_manager.send(channel, view=view)
+        else:
+            embed = await self.formatter.create_log_embed(log_item)
+            if embed:
+                success = await self.webhook_manager.send(channel, embed=embed)
+
+        if success and log_item.get("log_id"):
+            try:
+                conn = sqlite3.connect(DATABASE_NAME)
+                cursor = conn.cursor()
+                cursor.execute("UPDATE bot_logs SET sent_to_discord = 1 WHERE id = ?", (log_item["log_id"],))
+                conn.commit()
+                conn.close()
+            except: pass
 
     # Public API for other cogs
     async def log_mod_action(self, action_type: str, user_id: int, guild_id: int, 

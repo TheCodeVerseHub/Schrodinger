@@ -30,7 +30,9 @@ All notable changes to this project will be documented in this file.
 - **`?ls` listing commands**:
     - All `ls` outputs (`ls`, `ls role`, `ls members`, `ls perm`, `ls noperms`, `ls perms`, `ls channels`, `ls categories`, `ls bots`, `ls boosters`) now render as Components V2 containers instead of embeds. Long lists are chunked across TextDisplays in a single message, so the old 4000-char truncation hacks ("…more channels omitted", "Continued..." follow-up messages) are gone, `ls role` shows its full permission list, and `ls channels` gets a proper container per category.
 - **`?appeals` list command**:
-    - The admin appeal list now renders as a Components V2 dashboard with one Section per appeal (colored status badge — 🟡 pending / 🟢 approved / 🔴 denied / ⚪ auto-resolved — plus the user's avatar thumbnail). Up to 10 appeals per page with ◀/▶ navigation instead of cramming 20 appeals into embed fields with 100-char reasons.
+    - The admin appeal list now renders as a Components V2 dashboard with one Section per appeal (colored status badge 🟡 pending / 🟢 approved / 🔴 denied / ⚪ auto-resolved plus the user's avatar thumbnail). Up to 10 appeals per page with ◀/▶ navigation instead of cramming 20 appeals into embed fields with 100-char reasons.
+- **Moderation log cards**:
+    - Ban, unban, kick, timeout/mute and warn log entries now render as Components V2 cards with the user's avatar as a Section accessory (accent colors per event: red ban, green unban, orange kick, yellow timeout, gray warn) instead of classic embed fields. Everything else still falls back to classic embeds.
 
 ## [2026-01-15]
 

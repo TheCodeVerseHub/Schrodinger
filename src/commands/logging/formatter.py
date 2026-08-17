@@ -2,8 +2,42 @@ import discord  # type: ignore[import-not-found]
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
+
+def _fmt_mention(obj: Any) -> str:
+    mention = getattr(obj, "mention", None)
+    if isinstance(mention, str):
+        return mention
+    if obj is None:
+        return "Unknown User"
+    return str(obj)
+
+
+def _avatar_url(obj: Any) -> Optional[str]:
+    avatar = getattr(obj, "avatar", None)
+    url = getattr(avatar, "url", None)
+    return url if isinstance(url, str) else None
+
+
+def _created_at(obj: Any) -> Optional[datetime]:
+    created_at = getattr(obj, "created_at", None)
+    return created_at if isinstance(created_at, datetime) else None
+
+
+# Accent colors for the Components V2 moderation log cards. These mirror the
+# semantic colors used across the appeals dashboards (accept/reject/timeout-end).
+MODERATION_CARD_COLORS = {
+    "BAN": 0xFF0000,
+    "UNBAN": 0x00FF00,
+    "KICK": 0xFFA500,
+    "TIMEOUT_APPLIED": 0xF9F504,
+    "TIMEOUT_EXPIRED": 0xF9F504,
+    "TIMEOUT_REMOVED": 0xF9F504,
+    "WARN": 0x95A5A6,
+}
+
+
 class LogFormatter:
-    """Handles formatting of log events into Embeds or text"""
+    """Handles formatting of log events into Embeds, text or V2 cards"""
     
     def __init__(self, bot):
         self.bot = bot
@@ -11,23 +45,6 @@ class LogFormatter:
     async def create_log_embed(self, log_item: Dict[str, Any]) -> Optional[discord.Embed]:
         """Create an appropriate embed for the log item"""
         event_type = log_item.get("event_type", "UNKNOWN")
-
-        def _fmt_mention(obj: Any) -> str:
-            mention = getattr(obj, "mention", None)
-            if isinstance(mention, str):
-                return mention
-            if obj is None:
-                return "Unknown User"
-            return str(obj)
-
-        def _avatar_url(obj: Any) -> Optional[str]:
-            avatar = getattr(obj, "avatar", None)
-            url = getattr(avatar, "url", None)
-            return url if isinstance(url, str) else None
-
-        def _created_at(obj: Any) -> Optional[datetime]:
-            created_at = getattr(obj, "created_at", None)
-            return created_at if isinstance(created_at, datetime) else None
         
         # Tickets -> Return None to signal "No Embed" if configured, 
         # BUT the caller needs to know it's a no-embed text message.
@@ -403,6 +420,114 @@ class LogFormatter:
             embed.set_footer(text=f"Event: {event_type}")
         
         return embed
+
+    async def create_log_view(self, log_item: Dict[str, Any]) -> Optional[discord.ui.LayoutView]:
+        """Create a Components V2 card for moderation log events.
+
+        Bans, kicks, timeouts and warns render as cards with the user's avatar
+        as a Section accessory, matching the appeals dashboards. Returns None
+        for non-moderation events so callers can fall back to classic embeds.
+        """
+        event_type = log_item.get("event_type", "UNKNOWN")
+
+        # Only moderation events get the V2 card treatment.
+        if not any(
+            event_type.startswith(p)
+            for p in ("BAN", "UNBAN", "KICK", "TIMEOUT", "MUTE", "WARN")
+        ):
+            return None
+
+        user_id = log_item.get("user_id")
+        details = log_item.get("details", "")
+        moderator_id = log_item.get("moderator_id")
+
+        user: Any = None
+        moderator: Any = None
+        if user_id:
+            try:
+                user = await self.bot.fetch_user(user_id)
+            except Exception:
+                user = f"Unknown User ({user_id})"
+        if moderator_id:
+            try:
+                moderator = await self.bot.fetch_user(moderator_id)
+            except Exception:
+                moderator = f"Unknown Moderator ({moderator_id})"
+
+        # Title + accent per event (mirrors the classic embed semantics).
+        if event_type.startswith("BAN"):
+            title, color_key = "Member Banned", "BAN"
+            lines = [f"**{_fmt_mention(user)}** was banned"]
+        elif event_type.startswith("UNBAN"):
+            title, color_key = "Member Unbanned", "UNBAN"
+            lines = [f"**{_fmt_mention(user)}** was unbanned"]
+        elif event_type.startswith("KICK"):
+            title, color_key = "Member Kicked", "KICK"
+            lines = [f"**{_fmt_mention(user)}** was kicked"]
+        elif event_type.startswith("WARN"):
+            title, color_key = "Warning Issued", "WARN"
+            lines = [f"**{_fmt_mention(user)}** was warned"]
+        else:  # TIMEOUT / MUTE family
+            if "APPLIED" in event_type:
+                title, color_key = "Member Timed Out", "TIMEOUT_APPLIED"
+                lines = [f"**{_fmt_mention(user)}** was timed out"]
+            elif "EXPIRED" in event_type:
+                title, color_key = "Timeout Expired", "TIMEOUT_EXPIRED"
+                lines = [f"**{_fmt_mention(user)}**'s timeout naturally expired"]
+            else:
+                title, color_key = "Timeout Removed", "TIMEOUT_REMOVED"
+                if log_item.get("source") == "appeal":
+                    lines = [f"**{_fmt_mention(user)}**'s timeout was removed via an approved appeal"]
+                else:
+                    lines = [f"**{_fmt_mention(user)}** had their timeout removed manually"]
+
+        if user_id:
+            lines.append(f"**User ID:** `{user_id}`")
+        if moderator:
+            lines.append(f"**Moderator:** {_fmt_mention(moderator)}")
+
+        if "APPLIED" in event_type:
+            if "duration" in log_item:
+                lines.append(f"**Duration:** {log_item.get('duration', 'Unknown')}")
+            expires = log_item.get("expires")
+            if expires:
+                lines.append(f"**Expires:** <t:{int(expires.timestamp())}:R>")
+
+        if "case_id" in log_item:
+            lines.append(f"**Case ID:** #{log_item.get('case_id')}")
+
+        if details:
+            label = "Details" if "EXPIRED" in event_type else "Reason"
+            lines.append(f"**{label}:** {details}")
+
+        if "log_id" in log_item:
+            footer = f"Log ID: {log_item.get('log_id')} • {event_type}"
+        else:
+            footer = f"Event: {event_type}"
+
+        avatar_url = _avatar_url(user)
+        accessory = discord.ui.Thumbnail(
+            avatar_url or "https://cdn.discordapp.com/embed/avatars/0.png",
+            description=f"{event_type} • {user_id or 'unknown'}",
+        )
+
+        container = discord.ui.Container(
+            accent_color=discord.Color(MODERATION_CARD_COLORS[color_key])
+        )
+        container.add_item(discord.ui.TextDisplay(f"## {title}"))
+        container.add_item(discord.ui.Separator())
+        container.add_item(
+            discord.ui.Section(
+                discord.ui.TextDisplay("\n".join(lines)),
+                accessory=accessory,
+            )
+        )
+        container.add_item(discord.ui.Separator())
+        container.add_item(discord.ui.TextDisplay(f"*{footer}*"))
+
+        view = discord.ui.LayoutView(timeout=None)
+        view.add_item(container)
+        return view
 
     async def create_log_message(self, log_item: Dict[str, Any]) -> str:
         """Create a text message for logs (mainly tickets)"""
