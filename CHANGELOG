@@ -25,6 +25,8 @@ All notable changes to this project will be documented in this file.
     - Title is no longer required (description stays required).
     - New options: author via user ID (name + avatar render automatically), webhook name and avatar URL for the send identity, image URL, thumbnail URL, target channel picker, and a bottom link button (label + URL, opens external links).
     - `/editembed` opens the same builder pre-filled with the existing embed's values and saves changes in place.
+- **Help Menu**:
+    - The `/help` and `?help` menus now render with Components V2 (containers, text displays, sections) instead of classic embeds. Category pages group commands into Slash/Hybrid/Prefix sections that fit on one message for virtually every category (pagination only kicks in above 30 commands), the home page shows a bot-avatar thumbnail, and command detail is a proper card. The category dropdown and Home/◀/▶ buttons keep working.
 
 ## [2026-01-15]
 

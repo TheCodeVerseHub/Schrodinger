@@ -3,6 +3,9 @@
 The help menu is built entirely from the bot's loaded command tree at
 render time, so new commands appear automatically once their cog is loaded.
 There is no manual command list to keep in sync.
+
+Rendering uses Components V2 (containers / text displays / sections), so a
+whole category fits on one message without the old per-field truncation.
 """
 
 import logging
@@ -15,6 +18,8 @@ from discord import app_commands
 from discord.ext import commands
 
 logger = logging.getLogger(__name__)
+
+HELP_COLOR = 0x5865F2
 
 # ---------------------------------------------------------------------------
 # Category configuration
@@ -241,49 +246,9 @@ def build_categories(bot: commands.Bot, ctx) -> dict[str, list]:
     return dict(sorted(result.items()))
 
 
-def build_home_embed(
-    bot: commands.Bot, categories: dict[str, list[commands.Command]], prefix: str
-) -> discord.Embed:
-    """Main help page with bot info, quick stats and category overview."""
-    total = sum(len(cmds) for cmds in categories.values())
-    uptime = _format_uptime(bot)
-
-    embed = discord.Embed(
-        title="CodeVerse Bot : Help Center",
-        description=(
-            "Welcome to **CodeVerse Bot**! Pick a category from the dropdown "
-            "below to explore its commands.\n\n"
-            f"**Prefix:** `{prefix}` (e.g. `{prefix}ping`)\n"
-            "**Slash:** `/` (e.g. `/ping`)\n"
-            "Use `/help <command>` or `?help <command>` for detailed info on a specific command."
-        ),
-        color=0x5865F2,
-        timestamp=datetime.now(timezone.utc),
-    )
-
-    stats = [
-        f"- **Commands:** {total}",
-        f"- **Categories:** {len(categories)}",
-        f"- **Uptime:** {uptime}",
-    ]
-    embed.add_field(name="Quick Stats", value="\n".join(stats), inline=False)
-
-    overview = "\n".join(
-        f"**{label}** - {len(cmds)} command{'s' if len(cmds) != 1 else ''}"
-        for label, cmds in categories.items()
-    )
-    embed.add_field(
-        name="Categories", value=overview or "No commands available.", inline=False
-    )
-
-    if bot.user and bot.user.avatar:
-        embed.set_thumbnail(url=bot.user.avatar.url)
-    embed.set_footer(
-        text=f"{total} total commands • Use the dropdown to browse categories"
-    )
-    return embed
-
-
+# ---------------------------------------------------------------------------
+# Formatting helpers
+# ---------------------------------------------------------------------------
 def _format_uptime(bot: commands.Bot) -> str:
     try:
         start_time = getattr(bot, "start_time", datetime.now(timezone.utc))
@@ -291,17 +256,6 @@ def _format_uptime(bot: commands.Bot) -> str:
         return str(uptime).split(".")[0]
     except Exception:
         return "Unknown"
-
-
-def _format_usage(bot: commands.Bot, cmd: commands.Command, prefix: str) -> str:
-    """Build `prefix cmd sig` / `/cmd sig` usage lines for a command."""
-    sig = getattr(cmd, "signature", "") or ""
-    if sig:
-        sig = " " + sig
-    lines = [f"`{prefix}{cmd.qualified_name}{sig}`"]
-    if getattr(cmd, "app_command", None) is not None:
-        lines.append(f"`/{cmd.qualified_name}{sig}`")
-    return "\n".join(lines)
 
 
 def _format_permissions(cmd: commands.Command) -> str:
@@ -413,24 +367,6 @@ def _normalize_command_name(name: str) -> str:
     return name.replace(" ", ".")
 
 
-def _total_visible_count(bot: commands.Bot) -> int:
-    """Count of commands shown in the menu (top-level visible commands)."""
-    seen: set[str] = set()
-    for c in bot.commands:
-        if not _is_visible_command(c, False):
-            continue
-        seen.add(c.qualified_name)
-    for app_cmd in _tree_commands(bot).values():
-        if getattr(app_cmd, "parent", None) is not None:
-            continue
-        if app_cmd.name in {c.name for c in bot.commands}:
-            continue
-        if not _is_visible_command(app_cmd, False):
-            continue
-        seen.add(app_cmd.qualified_name)
-    return len(seen)
-
-
 def _find_command(bot: commands.Bot, name: str):
     """Find a command by (possibly qualified) name across prefix + slash."""
     name = _normalize_command_name(name)
@@ -445,78 +381,6 @@ def _find_command(bot: commands.Bot, name: str):
                 label = _cog_category(_slash_command_cogs(bot).get(key))
                 return _SlashCommandInfo(app_cmd, key, label)
     return None
-
-
-def build_command_embed(
-    bot: commands.Bot,
-    cmd,
-    prefix: str,
-    is_owner: bool,
-) -> discord.Embed:
-    """Detailed embed for a single command (any type)."""
-    embed = discord.Embed(
-        title=f"`{cmd.qualified_name}`",
-        description=(cmd.help or cmd.short_doc or "No description provided."),
-        color=0x5865F2,
-        timestamp=datetime.now(timezone.utc),
-    )
-
-    embed.add_field(
-        name="Category",
-        value=_cog_category(getattr(cmd, "cog_name", None)),
-        inline=True,
-    )
-    embed.add_field(name="Type", value=_type_label(cmd), inline=True)
-
-    aliases = _get_aliases(cmd)
-    if aliases:
-        embed.add_field(
-            name="Aliases",
-            value=", ".join(f"`{a}`" for a in aliases[:8]),
-            inline=True,
-        )
-
-    embed.add_field(name="Usage", value=_display_usage(cmd, prefix), inline=False)
-
-    perms = _format_permissions(cmd)
-    if perms:
-        embed.add_field(name="Required Permissions", value=perms, inline=True)
-
-    cooldown = _format_cooldown(cmd)
-    if cooldown:
-        embed.add_field(name="Cooldown", value=cooldown, inline=True)
-
-    if isinstance(cmd, commands.Group):
-        subs = [s for s in cmd.commands if _is_visible_command(s, is_owner)]
-        if subs:
-            lines = [f"`{s.name}` - {s.short_doc or 'No description'}" for s in subs]
-            embed.add_field(name="Subcommands", value="\n".join(lines), inline=False)
-    elif isinstance(cmd, _SlashCommandInfo) and isinstance(
-        cmd.app_command, app_commands.Group
-    ):
-        subs = [s for s in cmd.app_command.commands if _is_visible_command(s, is_owner)]
-        if subs:
-            lines = [f"`{s.name}` - {s.description or 'No description'}" for s in subs]
-            embed.add_field(name="Subcommands", value="\n".join(lines), inline=False)
-
-    embed.set_footer(text=f"CodeVerse Bot - {_total_visible_count(bot)} total commands")
-    return embed
-
-
-# ---------------------------------------------------------------------------
-# Category page rendering (with pagination)
-# ---------------------------------------------------------------------------
-_COMMANDS_PER_FIELD = 12
-_FIELDS_PER_PAGE = 2
-
-
-def _chunk_commands(cmds: list, size: int) -> list[list]:
-    return [cmds[i : i + size] for i in range(0, len(cmds), size)]
-
-
-def _total_pages(cmds: list) -> int:
-    """Number of pages for a category given the per-page chunking."""
-    return max(1, len(_chunk_commands(cmds, _COMMANDS_PER_FIELD * _FIELDS_PER_PAGE)))
 
 
 def _section_lines(cmds: list, prefix: str) -> list[str]:
@@ -547,153 +411,313 @@ _SECTION_TITLES = {
 }
 
 
-def build_category_embed(
+# ---------------------------------------------------------------------------
+# Components V2 rendering
+# ---------------------------------------------------------------------------
+def _chunk_lines(lines: list[str], max_chars: int = 1500) -> list[str]:
+    """Split command lines into chunks that fit a single TextDisplay safely."""
+    chunks: list[str] = []
+    current: list[str] = []
+    size = 0
+    for line in lines:
+        if current and size + len(line) + 1 > max_chars:
+            chunks.append("\n".join(current))
+            current, size = [], 0
+        current.append(line)
+        size += len(line) + 1
+    if current:
+        chunks.append("\n".join(current))
+    return chunks
+
+
+def build_home_container(
+    bot: commands.Bot, categories: dict[str, list], prefix: str
+) -> discord.ui.Container:
+    """Main help page: bot info, quick stats and category overview."""
+    total = sum(len(cmds) for cmds in categories.values())
+    uptime = _format_uptime(bot)
+
+    intro = (
+        "## CodeVerse Bot : Help Center\n"
+        "Welcome to **CodeVerse Bot**! Pick a category from the dropdown "
+        "below to explore its commands.\n\n"
+        f"**Prefix:** `{prefix}` (e.g. `{prefix}ping`)\n"
+        "**Slash:** `/` (e.g. `/ping`)\n"
+        "Use `/help <command>` or `?help <command>` for detailed info on a "
+        "specific command."
+    )
+
+    container = discord.ui.Container(accent_color=discord.Color(HELP_COLOR))
+    if bot.user and bot.user.avatar:
+        container.add_item(
+            discord.ui.Section(
+                discord.ui.TextDisplay(intro),
+                accessory=discord.ui.Thumbnail(
+                    bot.user.avatar.url, description="CodeVerse Bot"
+                ),
+            )
+        )
+    else:
+        container.add_item(discord.ui.TextDisplay(intro))
+    container.add_item(discord.ui.Separator())
+
+    stats = (
+        "### Quick Stats\n"
+        f"- **Commands:** {total}\n"
+        f"- **Categories:** {len(categories)}\n"
+        f"- **Uptime:** {uptime}"
+    )
+    container.add_item(discord.ui.TextDisplay(stats))
+    container.add_item(discord.ui.Separator())
+
+    overview = "\n".join(
+        f"**{label}** - {len(cmds)} command{'s' if len(cmds) != 1 else ''}"
+        for label, cmds in categories.items()
+    )
+    container.add_item(
+        discord.ui.TextDisplay(
+            f"### Categories\n{overview or 'No commands available.'}"
+        )
+    )
+    return container
+
+
+# Commands per category page. TextDisplays hold far more than the old embed
+# fields, so most categories fit on a single page; pagination only kicks in
+# for unusually large ones.
+_PAGE_SIZE = 30
+
+
+def _total_pages(cmds: list) -> int:
+    return max(1, (len(cmds) + _PAGE_SIZE - 1) // _PAGE_SIZE)
+
+
+def build_category_container(
     bot: commands.Bot,
     label: str,
     cmds: list,
     prefix: str,
     page: int = 0,
-) -> discord.Embed:
-    """Embed for one category page, grouped into command-type sections.
-
-    Sections are shown in the order Slash -> Hybrid -> Prefix, and empty
-    sections are omitted entirely.
-    """
-    page_size = _COMMANDS_PER_FIELD * _FIELDS_PER_PAGE
-    total_pages = max(1, len(_chunk_commands(cmds, page_size)))
+) -> discord.ui.Container:
+    """One category page grouped into Slash / Hybrid / Prefix sections."""
+    total_pages = _total_pages(cmds)
     page = max(0, min(page, total_pages - 1))
-    page_cmds = cmds[page * page_size : (page + 1) * page_size]
+    page_cmds = cmds[page * _PAGE_SIZE : (page + 1) * _PAGE_SIZE]
 
-    embed = discord.Embed(
-        title=f"{label} Commands",
-        description=f"{len(cmds)} command{'s' if len(cmds) != 1 else ''} - `?help <command>` or `/help <command>` for details",
-        color=0x5865F2,
-        timestamp=datetime.now(timezone.utc),
+    container = discord.ui.Container(accent_color=discord.Color(HELP_COLOR))
+    container.add_item(
+        discord.ui.TextDisplay(
+            f"## {label} Commands\n"
+            f"{len(cmds)} command{'s' if len(cmds) != 1 else ''} - use "
+            "`?help <command>` or `/help <command>` for details"
+        )
     )
+    container.add_item(discord.ui.Separator())
 
     buckets = _group_by_type(page_cmds)
     for ctype in ("slash", "hybrid", "prefix"):
         group = buckets[ctype]
         if not group:
             continue
-        # If a section spills onto the next page, mark it so users know it
-        # continues (headers are never orphaned on their own page).
         title = _SECTION_TITLES[ctype]
-        if page > 0 and command_type(cmds[page * page_size - 1]) == ctype:
-            title += " (cont.)"
-        for chunk in _chunk_commands(group, _COMMANDS_PER_FIELD):
-            lines = _section_lines(chunk, prefix)
-            embed.add_field(name=title, value="\n".join(lines), inline=False)
+        for chunk in _chunk_lines(_section_lines(group, prefix)):
+            container.add_item(discord.ui.TextDisplay(f"### {title}\n{chunk}"))
 
     if total_pages > 1:
-        embed.set_footer(
-            text=f"Page {page + 1}/{total_pages} • Use the buttons to navigate • {len(cmds)} commands"
+        container.add_item(discord.ui.Separator())
+        container.add_item(
+            discord.ui.TextDisplay(f"Page {page + 1} of {total_pages}")
+        )
+    return container
+
+
+def build_command_container(
+    bot: commands.Bot,
+    cmd,
+    prefix: str,
+    is_owner: bool,
+) -> discord.ui.Container:
+    """Detailed card for a single command (any type)."""
+    description = cmd.help or cmd.short_doc or "No description provided."
+
+    container = discord.ui.Container(accent_color=discord.Color(HELP_COLOR))
+    if bot.user and bot.user.avatar:
+        container.add_item(
+            discord.ui.Section(
+                discord.ui.TextDisplay(f"## `{cmd.qualified_name}`\n{description}"),
+                accessory=discord.ui.Thumbnail(
+                    bot.user.avatar.url, description="Command help"
+                ),
+            )
         )
     else:
-        embed.set_footer(
-            text=f"{len(cmds)} commands • Select another category from the dropdown"
+        container.add_item(
+            discord.ui.TextDisplay(f"## `{cmd.qualified_name}`\n{description}")
         )
-    return embed
+    container.add_item(discord.ui.Separator())
+
+    details = [
+        f"**Category:** {_cog_category(getattr(cmd, 'cog_name', None))}",
+        f"**Type:** {_type_label(cmd)}",
+    ]
+    aliases = _get_aliases(cmd)
+    if aliases:
+        details.append("**Aliases:** " + ", ".join(f"`{a}`" for a in aliases[:8]))
+    details.append(f"**Usage:** {_display_usage(cmd, prefix)}")
+    perms = _format_permissions(cmd)
+    if perms:
+        details.append(f"**Required Permissions:** {perms}")
+    cooldown = _format_cooldown(cmd)
+    if cooldown:
+        details.append(f"**Cooldown:** {cooldown}")
+    container.add_item(discord.ui.TextDisplay("### Details\n" + "\n".join(details)))
+
+    subs = []
+    if isinstance(cmd, commands.Group):
+        subs = [s for s in cmd.commands if _is_visible_command(s, is_owner)]
+    elif isinstance(cmd, _SlashCommandInfo) and isinstance(
+        cmd.app_command, app_commands.Group
+    ):
+        subs = [s for s in cmd.app_command.commands if _is_visible_command(s, is_owner)]
+    if subs:
+        lines = [
+            f"`{s.name}` - {s.short_doc or s.description or 'No description'}"
+            for s in subs
+        ]
+        for chunk in _chunk_lines(lines):
+            container.add_item(
+                discord.ui.TextDisplay("### Subcommands\n" + chunk)
+            )
+    return container
 
 
 # ---------------------------------------------------------------------------
 # Interactive view
 # ---------------------------------------------------------------------------
-class _HomeButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(
+class HelpMenuView(discord.ui.LayoutView):
+    """Components V2 help dashboard: dropdown + paginated category pages."""
+
+    def __init__(
+        self,
+        bot: commands.Bot,
+        categories: dict[str, list[commands.Command]],
+        prefix: str,
+    ):
+        super().__init__(timeout=180)
+        self.bot = bot
+        self.categories = categories
+        self.prefix = prefix
+        self.message = None
+        self.expired = False
+        self.current_label: Optional[str] = None
+        self.current_cmds: list[commands.Command] = []
+        self.current_page = 0
+        self.total_pages = 1
+        self._render()
+
+    # ------------------------------------------------------------------ render
+    def _render(self) -> None:
+        self.clear_items()
+
+        if self.current_label is None:
+            container = build_home_container(self.bot, self.categories, self.prefix)
+        else:
+            container = build_category_container(
+                self.bot,
+                self.current_label,
+                self.current_cmds,
+                self.prefix,
+                self.current_page,
+            )
+        self.add_item(container)
+
+        if self.expired:
+            return
+
+        category_row = discord.ui.ActionRow()
+        category_row.add_item(self._make_category_select())
+        self.add_item(category_row)
+
+        nav_row = discord.ui.ActionRow()
+        home = discord.ui.Button(
             label="Home",
             style=discord.ButtonStyle.secondary,
             custom_id="help:home",
         )
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.edit_message(
-            embed=self.view.home_embed, view=self.view
-        )  # type: ignore[attr-defined]
-
-
-class _PageButton(discord.ui.Button):
-    def __init__(self, label: str, custom_id: str, direction: int):
-        super().__init__(
-            label=label, style=discord.ButtonStyle.primary, custom_id=custom_id
+        home.callback = self._go_home  # type: ignore[assignment]
+        prev = discord.ui.Button(
+            label="◀",
+            style=discord.ButtonStyle.primary,
+            custom_id="help:prev",
+            disabled=self.current_page <= 0,
         )
-        self.direction = direction
-
-    async def callback(self, interaction: discord.Interaction):
-        view: HelpMenuView = self.view  # type: ignore[assignment]
-        page = view.current_page + self.direction
-        view.current_page = max(0, min(page, view.total_pages - 1))
-        embed = build_category_embed(
-            view.bot,
-            view.current_label,
-            view.current_cmds,
-            view.prefix,
-            view.current_page,
+        prev.callback = self._go_prev  # type: ignore[assignment]
+        nxt = discord.ui.Button(
+            label="▶",
+            style=discord.ButtonStyle.primary,
+            custom_id="help:next",
+            disabled=self.current_page >= self.total_pages - 1,
         )
-        await interaction.response.edit_message(embed=embed, view=view)
+        nxt.callback = self._go_next  # type: ignore[assignment]
+        nav_row.add_item(home)
+        nav_row.add_item(prev)
+        nav_row.add_item(nxt)
+        self.add_item(nav_row)
 
-
-class _CategorySelect(discord.ui.Select):
-    def __init__(self, categories: dict[str, list[commands.Command]]):
+    def _make_category_select(self) -> discord.ui.Select:
         options = [
             discord.SelectOption(
                 label=label,
                 description=f"{len(cmds)} command{'s' if len(cmds) != 1 else ''}",
                 value=label,
             )
-            for label, cmds in categories.items()
+            for label, cmds in self.categories.items()
         ]
-        super().__init__(
+        select = discord.ui.Select(
             placeholder="Choose a category to explore…",
             min_values=1,
             max_values=1,
             options=options[:25],
             custom_id="help:category",
         )
+        select.callback = self._on_category  # type: ignore[assignment]
+        return select
 
-    async def callback(self, interaction: discord.Interaction):
-        view: HelpMenuView = self.view  # type: ignore[assignment]
-        label = self.values[0]
-        view.current_label = label
-        view.current_cmds = view.categories[label]
-        view.current_page = 0
-        view.total_pages = _total_pages(view.current_cmds)
-        embed = build_category_embed(view.bot, label, view.current_cmds, view.prefix, 0)
-        await interaction.response.edit_message(embed=embed, view=view)
+    # ------------------------------------------------------------ callbacks
+    async def _on_category(self, interaction: discord.Interaction):
+        label = interaction.data["values"][0]
+        self.current_label = label
+        self.current_cmds = self.categories[label]
+        self.current_page = 0
+        self.total_pages = _total_pages(self.current_cmds)
+        self._render()
+        await interaction.response.edit_message(view=self)
 
-
-class HelpMenuView(discord.ui.View):
-    """Dropdown + paginated help menu."""
-
-    def __init__(
-        self,
-        bot: commands.Bot,
-        categories: dict[str, list[commands.Command]],
-        home_embed: discord.Embed,
-        prefix: str,
-    ):
-        super().__init__(timeout=180)
-        self.bot = bot
-        self.categories = categories
-        self.home_embed = home_embed
-        self.prefix = prefix
-        self.current_label: Optional[str] = None
-        self.current_cmds: list[commands.Command] = []
+    async def _go_home(self, interaction: discord.Interaction):
+        self.current_label = None
+        self.current_cmds = []
         self.current_page = 0
         self.total_pages = 1
+        self._render()
+        await interaction.response.edit_message(view=self)
 
-        self.add_item(_CategorySelect(categories))
-        self.add_item(_HomeButton())
-        self.add_item(_PageButton("◀", "help:prev", -1))
-        self.add_item(_PageButton("▶", "help:next", 1))
+    async def _go_prev(self, interaction: discord.Interaction):
+        self.current_page = max(0, self.current_page - 1)
+        self._render()
+        await interaction.response.edit_message(view=self)
+
+    async def _go_next(self, interaction: discord.Interaction):
+        self.current_page = min(self.total_pages - 1, self.current_page + 1)
+        self._render()
+        await interaction.response.edit_message(view=self)
 
     async def on_timeout(self) -> None:
-        """Clean up the menu by disabling it when it times out."""
+        """Disable the menu when it times out."""
+        self.expired = True
         try:
-            for item in self.children:
-                item.disabled = True
-            await self.message.edit(view=self)  # type: ignore[union-attr]
+            self._render()
+            if self.message is not None:
+                await self.message.edit(view=self)
         except Exception:
             pass
 
@@ -716,48 +740,38 @@ async def send_help_menu(
     if command_name:
         cmd = _find_command(bot, command_name.lower())
         if not cmd or not _is_visible_command(cmd, is_owner):
-            await _reply(ctx, f"Command `{command_name}` not found.")
+            await _reply(ctx, content=f"Command `{command_name}` not found.")
             return
-        embed = build_command_embed(bot, cmd, prefix, is_owner)
-        await _reply(ctx, embed=embed)
+        view = discord.ui.LayoutView(timeout=None)
+        view.add_item(build_command_container(bot, cmd, prefix, is_owner))
+        await _reply(ctx, view=view)
         return
 
     # Interactive menu
     categories = build_categories(bot, ctx)
-    home_embed = build_home_embed(bot, categories, prefix)
-    view = HelpMenuView(bot, categories, home_embed, prefix)
+    view = HelpMenuView(bot, categories, prefix)
     if ctx.interaction:
-        await ctx.interaction.response.send_message(embed=home_embed, view=view)
+        await ctx.interaction.response.send_message(view=view, ephemeral=True)
     else:
-        message = await ctx.send(embed=home_embed, view=view)
+        message = await ctx.send(view=view)
         view.message = message
 
 
 async def _reply(
-    ctx, content: str | None = None, embed: discord.Embed | None = None
+    ctx,
+    content: str | None = None,
+    embed: discord.Embed | None = None,
+    view: discord.ui.View | None = None,
 ) -> None:
     """Reply through either the interaction or a plain context."""
     if ctx.interaction:
         if not ctx.interaction.response.is_done():
-            if embed is not None:
-                await ctx.interaction.response.send_message(
-                    content=content or "", embed=embed, ephemeral=True
-                )
-            else:
-                await ctx.interaction.response.send_message(
-                    content=content or "", ephemeral=True
-                )
+            await ctx.interaction.response.send_message(
+                content=content or "", embed=embed, view=view, ephemeral=True
+            )
         else:
-            if embed is not None:
-                await ctx.interaction.followup.send(
-                    content=content or "", embed=embed, ephemeral=True
-                )
-            else:
-                await ctx.interaction.followup.send(
-                    content=content or "", ephemeral=True
-                )
+            await ctx.interaction.followup.send(
+                content=content or "", embed=embed, view=view, ephemeral=True
+            )
     else:
-        if embed is not None:
-            await ctx.send(content=content or "", embed=embed)
-        else:
-            await ctx.send(content=content or "")
+        await ctx.send(content=content or "", embed=embed, view=view)
