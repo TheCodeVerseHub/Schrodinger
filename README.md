@@ -29,6 +29,10 @@
 
 ## Recent Changes
 
+- **Components V2 dashboards** -> major surfaces now render with Discord's new Components V2 (containers, text displays, sections) instead of classic embeds: the `/help` menu (categories fit on one page, command detail cards), all `?ls` auditing tools (no more 4000-char truncation hacks), the `?appeals` admin list (one Section per appeal with colored status badges + avatar thumbnails), moderation log cards (ban/unban/kick/timeout/warn entries with user-avatar accessories), and `?diag` (a color-coded health dashboard, green/red per subsystem).
+- **Embed builder overhaul** -> `/embed` is now an interactive Components V2 builder: an ephemeral dashboard where every section (title, description, color, footer, pre-message, author, media, webhook, link button, target channel) has an Edit button that opens a modal, plus Save & Cancel. Title is optional, you can set the webhook name/avatar the embed is sent as, add a bottom link button, and `/editembed` re-opens the same builder pre-filled for in-place edits.
+- **Appeals** -> accepting an appeal whose timeout already expired (or whose member left) no longer approves a dead punishment: the accept is blocked, the appeal is auto-resolved, and it's logged to the appeals channel. Tempbans are also persisted to the database so they survive bot restarts.
+- **Channel update logging** -> permission change entries no longer use ✅/❌/⬜ emojis; each change is now shown as inline code (`added: send_messages`, `removed: view_channel`, `reset: read_messages`).
 - **Permit management commands** -> added `/permit delete`, `/permit rename`, and `/permit check-all` (paginated view of every user with permits).
 - **Environment-based configuration** -> all Discord channel/category/user/role/guild IDs moved out of the code into a single `.env` file (fallback defaults live in `config.py`).
 
@@ -92,13 +96,13 @@ A full, maintained reference lives in [`docs/COMMAND_REFERENCE.md`](docs/COMMAND
 ### Core
 | Command | Description |
 |---------|-------------|
-| `/help` • `?help` | Interactive categorized help menu |
+| `/help` • `?help` | Interactive Components V2 help menu |
 | `/ping` | Bot latency check |
 | `/info` • `?info` | Detailed user information (alias `userinfo`) |
 | `/get-user-id` | Get a Discord ID from a mention |
 | `/prefix` | View or change the per-guild prefix |
 | `/report` | Report a message to moderators |
-| `/diag` • `?diag` | Bot diagnostics (prefix only) |
+| `/diag` • `?diag` | Color-coded health dashboard (prefix only) |
 
 ### Moderation
 | Command | Description |
@@ -159,7 +163,7 @@ A full, maintained reference lives in [`docs/COMMAND_REFERENCE.md`](docs/COMMAND
 ### Utility & Rules
 | Command | Description |
 |---------|-------------|
-| `/embed` • `/editembed` | Interactive embed creator/editor |
+| `/embed` • `/editembed` | Interactive Components V2 embed builder (author, webhook identity, link button) |
 | `?ls role/perms/perm/noperms/members/channels/categories/bots/boosters` | Server auditing tools (prefix only) |
 | `?r1`…`?r12` • `?r34` • `?tldr` | Quick rule reference (prefix only) |
 
