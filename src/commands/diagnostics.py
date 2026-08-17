@@ -1,9 +1,23 @@
 import os
 import discord
 from discord.ext import commands
-from discord import app_commands
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Accent colors for the diag dashboard containers (green = healthy, red = problem).
+DIAG_OK_COLOR = 0x00FF00
+DIAG_BAD_COLOR = 0xFF0000
+
+
+def _diag_container(title: str, lines: list, ok: bool) -> discord.ui.Container:
+    """One Components V2 container per subsystem, accent-colored by status."""
+    container = discord.ui.Container(
+        accent_color=discord.Color(DIAG_OK_COLOR if ok else DIAG_BAD_COLOR)
+    )
+    container.add_item(discord.ui.TextDisplay(f"## {title}"))
+    container.add_item(discord.ui.TextDisplay("\n".join(lines)))
+    return container
+
 
 class Diagnostics(commands.Cog):
     """Bot diagnostics and health monitoring."""
@@ -14,53 +28,74 @@ class Diagnostics(commands.Cog):
     async def diag(self, ctx: commands.Context):
         """Show bot diagnostics and health status."""
         uptime = datetime.now(timezone.utc) - getattr(self.bot, 'start_time', datetime.now(timezone.utc))
-        
-        embed = discord.Embed(
-            title="Bot Diagnostics",
-            description="Current system status and health metrics",
-            color=0x0000ff,
-            timestamp=datetime.now(timezone.utc)
-        )
-        
-        # Basic Info
-        embed.add_field(
-            name="Instance Information",
-            value=f"**ID:** {os.getenv('INSTANCE_ID', 'production')}\n**Uptime:** {str(uptime).split('.')[0]}",
-            inline=True
-        )
-        
-        # Performance
-        embed.add_field(
-            name="Performance Metrics",
-            value=f"**Latency:** {round(self.bot.latency*1000)}ms\n**Guilds:** {len(self.bot.guilds)}",
-            inline=True
-        )
-        
+        latency = round(self.bot.latency * 1000)
+
         # Database Status
         db_files = []
         data_dir = Path("data")
         if data_dir.exists():
             for db_file in data_dir.glob("*.db"):
                 db_files.append(db_file.name)
-        
-        embed.add_field(
-            name="Database Status",
-            value=f"**Active DBs:** {len(db_files)}\n**Files:** {', '.join(db_files) if db_files else 'None'}",
-            inline=False
-        )
-        
+
         # Environment Check
         required_vars = ['DISCORD_TOKEN', 'GUILD_ID']
         missing_vars = [var for var in required_vars if not os.getenv(var)]
-        
-        embed.add_field(
-            name="Environment Status",
-            value=f"**Config:** {'Complete' if not missing_vars else 'Missing variables'}\n**Platform:** {os.getenv('HOSTING_PLATFORM', 'Unknown')}",
-            inline=True
+
+        view = discord.ui.LayoutView(timeout=None)
+
+        # Instance Information
+        instance_ok = getattr(self.bot, 'start_time', None) is not None
+        view.add_item(_diag_container(
+            "Instance Information",
+            [
+                f"**ID:** {os.getenv('INSTANCE_ID', 'production')}",
+                f"**Uptime:** {str(uptime).split('.')[0]}",
+                f"**Status:** {'🟢 Online' if instance_ok else '🔴 Restarting'}",
+            ],
+            instance_ok,
+        ))
+
+        # Performance
+        perf_ok = latency < 1000
+        view.add_item(_diag_container(
+            "Performance Metrics",
+            [
+                f"**Latency:** {latency}ms",
+                f"**Guilds:** {len(self.bot.guilds)}",
+                f"**Status:** {'🟢 Healthy' if perf_ok else '🔴 High latency'}",
+            ],
+            perf_ok,
+        ))
+
+        # Database Status
+        db_ok = bool(db_files)
+        view.add_item(_diag_container(
+            "Database Status",
+            [
+                f"**Active DBs:** {len(db_files)}",
+                f"**Files:** {', '.join(db_files) if db_files else 'None'}",
+                f"**Status:** {'🟢 Connected' if db_ok else '🔴 No databases found'}",
+            ],
+            db_ok,
+        ))
+
+        # Environment Check
+        env_ok = not missing_vars
+        env_container = _diag_container(
+            "Environment Status",
+            [
+                f"**Config:** {'Complete' if env_ok else 'Missing variables'}",
+                f"**Platform:** {os.getenv('HOSTING_PLATFORM', 'Unknown')}",
+                f"**Status:** {'🟢 Ready' if env_ok else '🔴 Missing: ' + ', '.join(missing_vars)}",
+            ],
+            env_ok,
         )
-        
-        embed.set_footer(text=f"Bot Version: Production | Instance: {os.getenv('INSTANCE_ID', 'prod')}")
-        await ctx.reply(embed=embed, mention_author=False)
+        env_container.add_item(discord.ui.TextDisplay(
+            f"*Bot Version: Production | Instance: {os.getenv('INSTANCE_ID', 'prod')}*"
+        ))
+        view.add_item(env_container)
+
+        await ctx.send(view=view)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Diagnostics(bot))

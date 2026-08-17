@@ -9,7 +9,7 @@ from .embed_builder import EmbedBuilderDashboard
 
 class EmbedBuilder(commands.Cog):
     """Advanced embed creation and management commands"""
-    
+
     def __init__(self, bot):
         self.bot = bot
         # Store some preset colors for easy access
@@ -56,7 +56,7 @@ class EmbedBuilder(commands.Cog):
         message_url="Alternative: Paste the message URL instead of ID"
     )
     async def edit_embed(
-        self, 
+        self,
         interaction: discord.Interaction,
         message_id: Optional[str] = None,
         message_url: Optional[str] = None
@@ -66,7 +66,7 @@ class EmbedBuilder(commands.Cog):
             # Extract message ID from URL if provided
             target_message_id = None
             target_channel_id = None
-            
+
             if message_url:
                 # Parse Discord message URL: https://discord.com/channels/guild_id/channel_id/message_id
                 import re
@@ -86,7 +86,7 @@ class EmbedBuilder(commands.Cog):
                     raise ValueError("Invalid message ID format")
             else:
                 raise ValueError("Please provide either message_id or message_url")
-            
+
             # Get the channel and message
             if target_channel_id and target_channel_id != interaction.channel_id:
                 # Message is in a different channel
@@ -101,10 +101,10 @@ class EmbedBuilder(commands.Cog):
                 target_channel = interaction.channel
                 if not isinstance(target_channel, (discord.TextChannel, discord.Thread)):
                     raise ValueError("Can only edit embeds in text channels or threads")
-            
+
             if not target_message_id:
                 raise ValueError("Message ID is required")
-            
+
             # Fetch the message
             try:
                 target_message = await target_channel.fetch_message(target_message_id)
@@ -112,12 +112,12 @@ class EmbedBuilder(commands.Cog):
                 raise ValueError("Message not found")
             except discord.Forbidden:
                 raise ValueError("No permission to access that message")
-            
+
             # Check if the message was sent by the bot (id) or by a webhook (no user id checks for webhooks)
             # Fetch webhook if it's a webhook message
             is_webhook = bool(target_message.webhook_id)
             webhook = None
-            
+
             if is_webhook:
                 if isinstance(target_channel, discord.TextChannel) and interaction.guild and target_channel.permissions_for(interaction.guild.me).manage_webhooks:
                      webhooks = await target_channel.webhooks()
@@ -132,7 +132,7 @@ class EmbedBuilder(commands.Cog):
                 )
                 await interaction.response.send_message(embed=error_embed, ephemeral=True)
                 return
-            
+
             if is_webhook and not webhook:
                  error_embed = discord.Embed(
                     title="❌ Cannot Edit Message",
@@ -151,10 +151,10 @@ class EmbedBuilder(commands.Cog):
                 )
                 await interaction.response.send_message(embed=error_embed, ephemeral=True)
                 return
-            
+
             # Get the first embed from the message
             original_embed = target_message.embeds[0]
-            
+
             builder = EmbedBuilderDashboard(
                 self,
                 user_id=interaction.user.id,
@@ -164,7 +164,7 @@ class EmbedBuilder(commands.Cog):
             )
             self._prefill_embed_builder(builder, target_message, original_embed)
             await interaction.response.send_message(view=builder, ephemeral=True)
-            
+
         except ValueError as e:
             error_embed = discord.Embed(
                 title="❌ Invalid Input",
@@ -229,16 +229,16 @@ class EmbedBuilder(commands.Cog):
     async def ls_command(self, ctx):
         """List utilities for the server"""
         commands_list = [
-            "`?ls channels` — List all channels (categories, text, voice)",
-            "`?ls channels ?w <Target> <Perm>` — Find channels where User/Role has Permission",
-            "`?ls categories [?w ...]` — List categories (optional: filter by permission)",
-            "`?ls role <role>` — View full details and permissions of a role",
-            "`?ls members <role>` — List members who have a specific role",
-            "`?ls perm <permission>` — See which roles have a specific permission",
-            "`?ls bots` — List all bots in the server",
-            "`?ls boosters` — List server boosters",
-            "`?ls perms` — List roles that have permissions",
-            "`?ls noperms` — List cosmetic roles (no permissions)",
+            "`?ls channels` - List all channels (categories, text, voice)",
+            "`?ls channels ?w <Target> <Perm>` - Find channels where User/Role has Permission",
+            "`?ls categories [?w ...]` - List categories (optional: filter by permission)",
+            "`?ls role <role>` - View full details and permissions of a role",
+            "`?ls members <role>` - List members who have a specific role",
+            "`?ls perm <permission>` - See which roles have a specific permission",
+            "`?ls bots` - List all bots in the server",
+            "`?ls boosters` - List server boosters",
+            "`?ls perms` - List roles that have permissions",
+            "`?ls noperms` - List cosmetic roles (no permissions)",
         ]
         await _ls_send(
             ctx,

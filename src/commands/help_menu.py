@@ -392,7 +392,7 @@ def _section_lines(cmds: list, prefix: str) -> list[str]:
         )
         if len(summary) > 70:
             summary = summary[:67] + "…"
-        lines.append(f"`{_display_name(cmd)}` — {summary}")
+        lines.append(f"`{_display_name(cmd)}` - {summary}")
     return lines
 
 

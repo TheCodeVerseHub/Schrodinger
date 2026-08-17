@@ -12,25 +12,25 @@
 
 ## Features Overview
 
-- **Moderation suite** — purge, kick, ban, softban, timeout (`?mute` works as a prefix alias), slowmode, locks/lockdowns, tempban, and more, with permit-based delegation for staff.
-- **Warning system** — issue, revoke, and review warnings (`/warn`, `/warnings view|modify|clear`).
-- **Support tickets** — persistent, thread-based ticket system with category routing, transcripts, and logging.
-- **Permit system** — create named permission groups (roles), assign them to members, and let staff act without native Discord permissions. Full lifecycle: `new`, `add`, `list`, `check`, `delete`, `rename`, `check-all`.
-- **Reaction roles** — automatic role assignment through emoji reactions.
-- **Sticky messages** — keep important announcements pinned in channels.
-- **Appeals** — ban/mute appeals with DM workflow and staff review.
-- **Centralized logging** — webhook-based event logging with per-guild channel configuration.
-- **Thread management** — close/archive, pin, and unpin threads.
-- **Embed builder & server tooling** — interactive embed creator plus `?ls` channel/role/permission auditing tools.
-- **Rules & community** — quick rule-reference commands (`?r1`…`?r12`, `?tldr`).
-- **Protection** — protected-channel auto-timeout, authorized-server enforcement, and more.
+- **Moderation suite** -> purge, kick, ban, softban, timeout (`?mute` works as a prefix alias), slowmode, locks/lockdowns, tempban, and more, with permit-based delegation for staff.
+- **Warning system** -> issue, revoke, and review warnings (`/warn`, `/warnings view|modify|clear`).
+- **Support tickets** -> persistent, thread-based ticket system with category routing, transcripts, and logging.
+- **Permit system** -> create named permission groups (roles), assign them to members, and let staff act without native Discord permissions. Full lifecycle: `new`, `add`, `list`, `check`, `delete`, `rename`, `check-all`.
+- **Reaction roles** -> automatic role assignment through emoji reactions.
+- **Sticky messages** -> keep important announcements pinned in channels.
+- **Appeals** -> ban/mute appeals with DM workflow and staff review.
+- **Centralized logging** -> webhook-based event logging with per-guild channel configuration.
+- **Thread management** -> close/archive, pin, and unpin threads.
+- **Embed builder & server tooling** -> interactive embed creator plus `?ls` channel/role/permission auditing tools.
+- **Rules & community** -> quick rule-reference commands (`?r1`…`?r12`, `?tldr`).
+- **Protection** -> protected-channel auto-timeout, authorized-server enforcement, and more.
 
 > **Prefix:** `?` (per-guild override via `/prefix`) • **Slash:** `/`
 
 ## Recent Changes
 
-- **Permit management commands** — added `/permit delete`, `/permit rename`, and `/permit check-all` (paginated view of every user with permits).
-- **Environment-based configuration** — all Discord channel/category/user/role/guild IDs moved out of the code into a single `.env` file (fallback defaults live in `config.py`).
+- **Permit management commands** -> added `/permit delete`, `/permit rename`, and `/permit check-all` (paginated view of every user with permits).
+- **Environment-based configuration** -> all Discord channel/category/user/role/guild IDs moved out of the code into a single `.env` file (fallback defaults live in `config.py`).
 
 ## Quick Start
 
@@ -68,7 +68,7 @@
    DISCORD_TOKEN=your_bot_token_here
    GUILD_ID=your_server_id_here
 
-   # Authorized guilds (comma-separated) — the bot only operates here
+   # Authorized guilds (comma-separated) the bot only operates here
    AUTHORIZED_GUILD_IDS=your_server_id_here
    ```
 
@@ -205,11 +205,11 @@ codeverse-bot/
 The bot reads all configuration from `.env` via `config.py`. Copy `.env.example` → `.env`.
 
 ### Required
-- `DISCORD_TOKEN` — your bot token
-- `GUILD_ID` — your main server ID
-- `AUTHORIZED_GUILD_IDS` — comma-separated guilds the bot is allowed to operate in
+- `DISCORD_TOKEN` -> your bot token
+- `GUILD_ID` -> your main server ID
+- `AUTHORIZED_GUILD_IDS` -> comma-separated guilds the bot is allowed to operate in
 
-### Discord IDs (all optional — code falls back to defaults)
+### Discord IDs (all optional -> code falls back to defaults)
 
 **Guilds:** `AUTHORIZED_GUILD_IDS`, `MAIN_GUILD_ID`
 
@@ -269,7 +269,7 @@ python -m py_compile src/commands/your_cog.py
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License see the [LICENSE](LICENSE) file for details.
 
 ## Support
 

@@ -33,7 +33,7 @@ If you’re trying to trim the bot, jump to **Classification (important / ok-to-
 - **Environment variables:** `DISCORD_TOKEN` (required), `GUILD_ID` (optional), `INSTANCE_ID` (optional), `BOT_LOCK_FILE` (optional).
 - **Single-instance guard:** uses a lock file (`.bot_instance.lock` by default) to reduce accidental double-running.
 - **Authorized guilds:** configured via `AUTHORIZED_GUILD_IDS` in `.env` (loaded through `config.py`).
-- **Discord IDs (channels/roles/users/guilds):** centralized in root `config.py` and overridable via `.env` — including welcome-DM channels used by `events.member_events`, the report channel in `commands.core`, and the logging routing map in `src/commands/logging/config.py` (`LOG_CHANNEL_MAP`). No IDs are hardcoded in feature modules anymore.
+- **Discord IDs (channels/roles/users/guilds):** centralized in root `config.py` and overridable via `.env` including welcome-DM channels used by `events.member_events`, the report channel in `commands.core`, and the logging routing map in `src/commands/logging/config.py` (`LOG_CHANNEL_MAP`). No IDs are hardcoded in feature modules anymore.
 - **Config mismatch note:** root `config.py` contains some defaults like `COMMAND_PREFIX='!'`, but the bot’s actual prefix is set in `src/bot.py` to `?`.
 
 ---
@@ -130,7 +130,7 @@ There are multiple join listeners:
   - Sends a **welcome DM embed** to every joining member (if DMs are open).
   - Message contains several hard-coded channel mentions (channel IDs baked into the string).
 
-- `commands.protection` also has a join listener (not loaded — `commands.protection` is not in `COGS_TO_LOAD`)
+- `commands.protection` also has a join listener (not loaded `commands.protection` is not in `COGS_TO_LOAD`)
   - Tracks join bursts for raid detection (does not DM).
 
 - `events.message_handler:on_member_join`
