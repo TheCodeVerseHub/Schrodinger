@@ -50,7 +50,7 @@ class Diagnostics(commands.Cog):
             [
                 f"**ID:** {os.getenv('INSTANCE_ID', 'production')}",
                 f"**Uptime:** {str(uptime).split('.')[0]}",
-                f"**Status:** {'🟢 Online' if instance_ok else '🔴 Restarting'}",
+                f"**Status:** {'Online' if instance_ok else 'Restarting'}",
             ],
             instance_ok,
         ))
@@ -62,7 +62,7 @@ class Diagnostics(commands.Cog):
             [
                 f"**Latency:** {latency}ms",
                 f"**Guilds:** {len(self.bot.guilds)}",
-                f"**Status:** {'🟢 Healthy' if perf_ok else '🔴 High latency'}",
+                f"**Status:** {'Healthy' if perf_ok else 'High latency'}",
             ],
             perf_ok,
         ))
@@ -74,7 +74,7 @@ class Diagnostics(commands.Cog):
             [
                 f"**Active DBs:** {len(db_files)}",
                 f"**Files:** {', '.join(db_files) if db_files else 'None'}",
-                f"**Status:** {'🟢 Connected' if db_ok else '🔴 No databases found'}",
+                f"**Status:** {'Connected' if db_ok else 'No databases found'}",
             ],
             db_ok,
         ))
@@ -86,7 +86,7 @@ class Diagnostics(commands.Cog):
             [
                 f"**Config:** {'Complete' if env_ok else 'Missing variables'}",
                 f"**Platform:** {os.getenv('HOSTING_PLATFORM', 'Unknown')}",
-                f"**Status:** {'🟢 Ready' if env_ok else '🔴 Missing: ' + ', '.join(missing_vars)}",
+                f"**Status:** {'Ready' if env_ok else 'Missing: ' + ', '.join(missing_vars)}",
             ],
             env_ok,
         )
