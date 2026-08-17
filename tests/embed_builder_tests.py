@@ -148,6 +148,23 @@ def test_apply_section_rejects_bad_channel():
     assert builder.data["channel_id"] == "456"  # unchanged
 
 
+def test_description_shows_set_not_content():
+    """The builder must not render the full description (up to 4000 chars)
+    inside a TextDisplay - it would overflow the 4000-char limit."""
+    builder = make_builder()
+    assert builder._display_value("description") == "*Not set*"
+    builder.data["description"] = "x" * 4000
+    assert builder._display_value("description") == "Set"
+
+
+def test_truncate_display_keeps_content_under_limit():
+    long_text = "x" * 5000
+    truncated = EmbedBuilderDashboard._truncate_display(long_text)
+    assert len(truncated) <= 3500
+    assert truncated.endswith("…")
+    assert EmbedBuilderDashboard._truncate_display("short") == "short"
+
+
 def test_apply_section_accepts_channel_mention():
     builder = make_builder()
     deferred = []

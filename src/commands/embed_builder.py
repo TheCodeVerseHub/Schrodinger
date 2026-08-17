@@ -305,7 +305,7 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
             container.add_item(
                 discord.ui.Section(
                     discord.ui.TextDisplay(
-                        f"### {label}\n{self._display_value(section)}"
+                        f"### {label}\n{self._truncate_display(self._display_value(section))}"
                     ),
                     accessory=edit_button,
                 )
@@ -341,6 +341,11 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
         self.add_item(container)
 
     def _display_value(self, section: str) -> str:
+        if section == "description":
+            # Descriptions can be up to 4000 chars, which would overflow the
+            # TextDisplay limit once the section header is added. Show whether
+            # one is set instead of the raw content.
+            return "Set" if (self.data.get("description") or "").strip() else "*Not set*"
         if section == "button":
             label = self.data.get("button_label")
             url = self.data.get("button_url")
@@ -394,6 +399,13 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
         return discord.Embed(
             title=f"❌ {title}", description=description, color=discord.Color.red()
         )
+
+    @staticmethod
+    def _truncate_display(text: str, limit: int = 3500) -> str:
+        """Keep section previews safely under Discord's TextDisplay limit."""
+        if len(text) <= limit:
+            return text
+        return text[: limit - 1] + "…"
 
     @staticmethod
     def _parse_channel_id(raw: Optional[str]) -> Optional[int]:
