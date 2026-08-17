@@ -75,6 +75,20 @@ def test_button_view_contains_link_button():
     assert buttons and buttons[0].label == "Read More"
 
 
+def test_button_view_is_not_components_v2():
+    """The sent button must be a classic View so it can travel with the embed.
+
+    Components V2 views set MessageFlags.IS_COMPONENTS_V2, which makes Discord
+    reject the 'embeds' field in the same message (error 50035).
+    """
+    builder = make_builder()
+    builder.data["button_label"] = "Read More"
+    builder.data["button_url"] = "https://example.com"
+    view = builder._build_button_view()
+    assert view is not None
+    assert not view.has_components_v2()
+
+
 def test_build_embed_title_optional():
     builder = make_builder()
     builder.data["description"] = "Hello world"

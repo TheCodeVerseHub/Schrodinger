@@ -734,18 +734,23 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
             return self.data["author_name"], self.data.get("author_icon") or None
         return None
 
-    def _build_button_view(self) -> Optional[discord.ui.LayoutView]:
+    def _build_button_view(self) -> Optional[discord.ui.View]:
+        """Classic (non-V2) view for the link button.
+
+        Components V2 views set ``MessageFlags.IS_COMPONENTS_V2``, and Discord
+        rejects embeds/content in the same message as a V2 view. The link
+        button therefore uses a classic :class:`discord.ui.View` so it can be
+        sent together with the embed.
+        """
         label = (self.data.get("button_label") or "").strip()
         url = (self.data.get("button_url") or "").strip()
         if not label and not url:
             return None
-        view = discord.ui.LayoutView(timeout=None)
-        row = discord.ui.ActionRow()
+        view = discord.ui.View(timeout=None)
         button = discord.ui.Button(
             label=label or "Open Link",
             style=discord.ButtonStyle.link,
             url=url or "https://discord.com",
         )
-        row.add_item(button)
-        view.add_item(row)
+        view.add_item(button)
         return view
