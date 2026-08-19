@@ -76,10 +76,18 @@ class WebhookManager:
         Sends an embed and/or Components V2 view via webhook. Falls back to
         channel.send on failure. Returns True if successful, False otherwise.
         """
+        # Build kwargs, only including non-None embed/view so discord.py
+        # doesn't reject them with "expected view parameter to be of type"
+        send_kwargs: dict = {}
+        if embed is not None:
+            send_kwargs["embed"] = embed
+        if view is not None:
+            send_kwargs["view"] = view
+
         if self.bot.user is None:
             # Fallback if bot user info isn't available
             try:
-                await channel.send(embed=embed, view=view)
+                await channel.send(**send_kwargs)
                 return True
             except Exception as e:
                 logger.error(f"Fallback send failed for {channel.id}: {e}")
@@ -88,15 +96,15 @@ class WebhookManager:
         webhook = await self.get_webhook(channel)
         
         if webhook:
+            webhook_kwargs = {
+                **send_kwargs,
+                "username": self.bot.user.display_name,
+                "avatar_url": self.bot.user.display_avatar.url,
+                "wait": True,
+            }
             try:
                 # wait=True to ensure we catch HTTP errors immediately
-                await webhook.send(
-                    embed=embed,
-                    view=view,
-                    username=self.bot.user.display_name, 
-                    avatar_url=self.bot.user.display_avatar.url, 
-                    wait=True
-                )
+                await webhook.send(**webhook_kwargs)
                 return True
             except discord.NotFound:
                 # Webhook might have been deleted externally
@@ -108,13 +116,7 @@ class WebhookManager:
                 webhook = await self.get_webhook(channel)
                 if webhook:
                     try:
-                        await webhook.send(
-                            embed=embed,
-                            view=view,
-                            username=self.bot.user.display_name, 
-                            avatar_url=self.bot.user.display_avatar.url, 
-                            wait=True
-                        )
+                        await webhook.send(**webhook_kwargs)
                         return True
                     except Exception as e:
                         logger.error(f"Retry webhook send failed for {channel.id}: {e}")
@@ -129,7 +131,7 @@ class WebhookManager:
         
         # Fallback to direct bot message
         try:
-            await channel.send(embed=embed, view=view)
+            await channel.send(**send_kwargs)
             return True
         except Exception as e:
             logger.error(f"Fallback send failed for {channel.id}: {e}")
