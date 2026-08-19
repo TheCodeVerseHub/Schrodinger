@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import PostgresDsn, MySQLDsn, MariaDBDsn, AnyUrl, UrlConstraints
 
 
@@ -20,10 +20,11 @@ class SAMConfig(BaseSettings):
     database_uri: SqliteDsn | PostgresDsn | MySQLDsn | MariaDBDsn = "sqlite+aiosqlite:///data/codeverse_bot.db"  # type: ignore
     builtin_logger_enabled: bool = True
 
-    class Config:
-        env_file = ".env"
-        env_prefix = "sam_"
-        extra = "allow"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="sam_",
+        extra="allow",
+    )
 
 config = SAMConfig() # type: ignore
 

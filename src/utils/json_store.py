@@ -37,7 +37,7 @@ async def _load(path: str) -> Any:
             with open(path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except json.JSONDecodeError:
-            backup = path + '.corrupt.' + datetime.utcnow().strftime('%Y%m%d%H%M%S')
+            backup = path + '.corrupt.' + datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')
             try:
                 os.replace(path, backup)
             except OSError:
