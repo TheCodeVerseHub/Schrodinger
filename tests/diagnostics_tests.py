@@ -84,12 +84,24 @@ def test_diag_stays_within_component_limit():
 
 def test_diag_healthy_all_green():
     async def run():
-        ctx = FakeCtx()
-        await Diagnostics(healthy_bot()).diag.callback(
-            Diagnostics(healthy_bot()), ctx
-        )
-        view = ctx.sent["view"]
-        assert accent_values(view) == [DIAG_OK_COLOR] * 4
+        old = dict(os.environ)
+        os.environ.setdefault("DISCORD_TOKEN", "test-token")
+        os.environ.setdefault("GUILD_ID", "123")
+        data_dir = __import__("pathlib").Path("data")
+        data_dir.mkdir(exist_ok=True)
+        dummy_db = data_dir / "test.db"
+        dummy_db.touch(exist_ok=True)
+        try:
+            ctx = FakeCtx()
+            await Diagnostics(healthy_bot()).diag.callback(
+                Diagnostics(healthy_bot()), ctx
+            )
+            view = ctx.sent["view"]
+            assert accent_values(view) == [DIAG_OK_COLOR] * 4
+        finally:
+            dummy_db.unlink(missing_ok=True)
+            os.environ.clear()
+            os.environ.update(old)
 
     asyncio.run(run())
 
