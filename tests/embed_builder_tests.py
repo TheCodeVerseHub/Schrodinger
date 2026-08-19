@@ -184,65 +184,54 @@ def test_apply_section_accepts_channel_mention():
     assert builder.data["channel_id"] == "789"
 
 
-def test_image_gif_section_exists():
-    """The Image/GIF section should be present in the dashboard."""
-    assert "image_gif" in EmbedBuilderDashboard.SECTIONS
-    label, modal_title, fields = EmbedBuilderDashboard.SECTIONS["image_gif"]
-    assert label == "Image / GIF"
-    assert modal_title == "Edit Image / GIF"
-    assert len(fields) == 1
-    assert fields[0][0] == "image_url"
+def test_image_gif_section_does_not_exist():
+    """The redundant image_gif section was removed; only media remains."""
+    assert "image_gif" not in EmbedBuilderDashboard.SECTIONS
+    assert "media" in EmbedBuilderDashboard.SECTIONS
 
 
-def test_image_gif_display_value_not_set():
+def test_media_section_has_image_and_thumbnail():
+    """The media section should cover both image and thumbnail URLs."""
+    label, _modal_title, fields = EmbedBuilderDashboard.SECTIONS["media"]
+    assert label == "Media"
+    keys = [k for k, _ in fields]
+    assert "image_url" in keys
+    assert "thumbnail_url" in keys
+
+
+def test_media_display_value_not_set():
     builder = make_builder()
-    assert builder._display_value("image_gif") == "*Not set*"
+    assert builder._display_value("media") == "*Not set*"
 
 
-def test_image_gif_display_value_shows_url():
+def test_media_display_value_shows_both_urls():
     builder = make_builder()
     builder.data["image_url"] = "https://example.com/cat.gif"
-    assert builder._display_value("image_gif") == "https://example.com/cat.gif"
+    builder.data["thumbnail_url"] = "https://example.com/thumb.png"
+    display = builder._display_value("media")
+    assert "cat.gif" in display
+    assert "thumb.png" in display
 
 
-def test_image_gif_applies_to_data():
-    builder = make_builder()
-    deferred = []
-
-    async def defer(*args, **kwargs):
-        deferred.append(True)
-
-    async def edit_original_response(*args, **kwargs):
-        pass
-
-    interaction = SimpleNamespace(
-        user=SimpleNamespace(id=123),
-        response=SimpleNamespace(defer=defer),
-        edit_original_response=edit_original_response,
-    )
-    run(
-        builder.apply_section(
-            interaction, "image_gif", {"image_url": "https://example.com/pic.gif"}
-        )
-    )
-    assert builder.data["image_url"] == "https://example.com/pic.gif"
-
-
-def test_image_gif_build_embed_sets_image():
-    """Setting image via image_gif section should appear on the embed."""
+def test_media_build_embed_sets_image_and_thumbnail():
+    """Setting image and thumbnail via media should appear on the embed."""
     builder = make_builder()
     builder.data["description"] = "test"
     builder.data["image_url"] = "https://example.com/animated.gif"
+    builder.data["thumbnail_url"] = "https://example.com/thumb.png"
     interaction = SimpleNamespace(guild=None)
     embed = run(builder._build_embed(interaction))
     assert embed.image is not None
     assert embed.image.url == "https://example.com/animated.gif"
+    assert embed.thumbnail is not None
+    assert embed.thumbnail.url == "https://example.com/thumb.png"
 
 
-def test_image_gif_none_clears_image():
+def test_media_none_clears_image():
     builder = make_builder()
     builder.data["description"] = "test"
     builder.data["image_url"] = None
+    builder.data["thumbnail_url"] = None
     interaction = SimpleNamespace(guild=None)
     embed = run(builder._build_embed(interaction))
     assert embed.image.url is None

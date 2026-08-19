@@ -152,21 +152,6 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
                 )
             ],
         ),
-        "image_gif": (
-            "Image / GIF",
-            "Edit Image / GIF",
-            [
-                (
-                    "image_url",
-                    {
-                        "label": "Image or GIF URL",
-                        "placeholder": "https://... (direct link to an image or GIF)",
-                        "required": False,
-                        "max_length": 1024,
-                    },
-                ),
-            ],
-        ),
         "media": (
             "Media",
             "Edit Media",
@@ -375,9 +360,6 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
             if channel is not None:
                 return channel.mention
             return f"ID `{raw}`"
-        if section == "image_gif":
-            image = self.data.get("image_url")
-            return image if image else "*Not set*"
         if section == "author":
             author_id = self.data.get("author_id")
             if author_id:
@@ -473,8 +455,6 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
         elif section == "webhook":
             self.data["webhook_name"] = values.get("webhook_name")
             self.data["webhook_avatar"] = values.get("webhook_avatar")
-        elif section == "image_gif":
-            self.data["image_url"] = values.get("image_url")
         elif section == "media":
             self.data["image_url"] = values.get("image_url")
             self.data["thumbnail_url"] = values.get("thumbnail_url")
@@ -666,14 +646,14 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
                     target_message_id,
                     content=content,
                     embed=embed,
-                    view=view or None,
+                    view=view or discord.utils.MISSING,
                 )
             else:
                 message = await channel.fetch_message(target_message_id)
                 await message.edit(
                     content=content,
                     embed=embed,
-                    view=view or None,
+                    view=view or discord.utils.MISSING,
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
             message = await channel.fetch_message(target_message_id)

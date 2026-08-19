@@ -304,29 +304,29 @@ def _perm_label(perm: str) -> str:
     return labels.get(perm, perm.replace("_", " ").title())
 
 
-def _format_cooldown(cmd: commands.Command) -> Optional[str]:
+def _format_cooldown(cmd) -> Optional[str]:
     """Return a short cooldown description if the command defines one."""
-    for check in getattr(cmd, "checks", []) or []:
-        if isinstance(check, commands.Cooldown):
-            per = check.per
+    # discord.py wraps @cooldown(...) checks as functions with a .cooldown
+    # attribute (commands.CooldownMapping), not bare Cooldown objects.
+    cooldown = getattr(cmd, "cooldown", None)
+    if cooldown is not None:
+        mapping = getattr(cooldown, "mapping", cooldown)
+        per = getattr(mapping, "per", None)
+        rate = getattr(mapping, "rate", None)
+        if per is not None and rate is not None:
             unit = "second"
             if per >= 3600:
                 per, unit = per / 3600, "hour"
             elif per >= 60:
                 per, unit = per / 60, "minute"
-            return f"{check.rate} use{'s' if check.rate != 1 else ''}/{int(per)} {unit}{'s' if int(per) != 1 else ''}"
+            return f"{rate} use{'s' if rate != 1 else ''}/{int(per)} {unit}{'s' if int(per) != 1 else ''}"
     return None
 
 
-def _type_label(cmd: commands.Command) -> str:
+def _type_label(cmd) -> str:
     """Classify a command as Slash, Prefix or Hybrid."""
-    has_app = getattr(cmd, "app_command", None) is not None
-    is_prefix = True  # registered via @commands.command / hybrid_command
-    if has_app and is_prefix:
-        return "Hybrid"
-    if has_app:
-        return "Slash"
-    return "Prefix"
+    ctype = command_type(cmd)
+    return ctype.capitalize()
 
 
 def _get_aliases(cmd: commands.Command) -> list[str]:
