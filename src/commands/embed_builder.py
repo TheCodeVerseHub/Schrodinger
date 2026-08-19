@@ -9,10 +9,42 @@ webhook with the chosen identity; **Cancel** discards everything.
 import functools
 import re
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import discord  # type: ignore[import-not-found]
 
 from utils.helpers import sanitize_mentions
+
+# Direct-link image extensions recognised by Discord embeds.
+_IMAGE_EXTENSIONS = {".gif", ".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+
+# Hostnames known to serve direct image/GIF files.
+_DIRECT_IMAGE_HOSTS = {
+    "i.imgur.com",
+    "media.tenor.com",
+    "media.giphy.com",
+    "cdn.discordapp.com",
+    "media.discordapp.net",
+    "images.unsplash.com",
+}
+
+
+def _looks_like_direct_image(url: str) -> bool:
+    """Return True if *url* is likely a direct image link that Discord can render."""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    path = parsed.path.lower()
+    # Extension check: .gif, .png, etc.
+    for ext in _IMAGE_EXTENSIONS:
+        if path.endswith(ext):
+            return True
+    # Known direct-image hostnames (Tenor, Giphy, Imgur CDN, etc.)
+    host = (parsed.hostname or "").lower()
+    if host in _DIRECT_IMAGE_HOSTS:
+        return True
+    return False
 
 EMBED_BUILDER_COLOR = 0x5865F2
 
@@ -535,6 +567,22 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
                     "Button Needs a Link",
                     "The link button has a label but no URL. Edit the "
                     "**Link Button** section and add the URL it should open.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        image_url = (self.data.get("image_url") or "").strip()
+        if image_url and not _looks_like_direct_image(image_url):
+            await interaction.followup.send(
+                embed=self._error_embed(
+                    "Image URL Might Not Work",
+                    f"The image URL doesn't look like a direct image link:\n"
+                    f"`{image_url}`\n\n"
+                    "Discord needs a **direct link** to the image file (ending in "
+                    ".gif, .png, .jpg, etc.). Page URLs like tenor.com/view/ "
+                    "or klipy.com/gifs/ won't display.\n\n"
+                    "**Tip:** Right-click the image \u2192 Copy image address."
                 ),
                 ephemeral=True,
             )

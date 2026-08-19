@@ -235,3 +235,33 @@ def test_media_none_clears_image():
     interaction = SimpleNamespace(guild=None)
     embed = run(builder._build_embed(interaction))
     assert embed.image.url is None
+
+
+def test_looks_like_direct_image_gif_extension():
+    from commands.embed_builder import _looks_like_direct_image
+    assert _looks_like_direct_image("https://example.com/cat.gif")
+    assert _looks_like_direct_image("https://example.com/cat.GIF")
+
+
+def test_looks_like_direct_image_png_extension():
+    from commands.embed_builder import _looks_like_direct_image
+    assert _looks_like_direct_image("https://example.com/photo.png")
+    assert _looks_like_direct_image("https://example.com/photo.jpg")
+    assert _looks_like_direct_image("https://example.com/photo.jpeg")
+    assert _looks_like_direct_image("https://example.com/photo.webp")
+
+
+def test_looks_like_direct_image_known_hosts():
+    from commands.embed_builder import _looks_like_direct_image
+    assert _looks_like_direct_image("https://media.tenor.com/abc.gif")
+    assert _looks_like_direct_image("https://media.giphy.com/media/123/giphy.gif")
+    assert _looks_like_direct_image("https://i.imgur.com/abc.png")
+    assert _looks_like_direct_image("https://cdn.discordapp.com/attachments/123/456/image.png")
+
+
+def test_looks_like_direct_image_rejects_page_urls():
+    from commands.embed_builder import _looks_like_direct_image
+    assert not _looks_like_direct_image("https://klipy.com/gifs/rules-30")
+    assert not _looks_like_direct_image("https://tenor.com/view/cat-meme-12345")
+    assert not _looks_like_direct_image("https://giphy.com/gifs/funny-cat-abc123")
+    assert not _looks_like_direct_image("https://imgur.com/a/abc123")
