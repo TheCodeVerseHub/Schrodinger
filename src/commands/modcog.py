@@ -820,11 +820,11 @@ class ModCog(commands.Cog):
                 description=f"Are you sure you want to nuke {channel_to_nuke.mention}?\n\n**This will:**\n• Delete all messages\n• Reset channel position\n• Preserve permissions and settings",
                 color=discord.Color.red()
             )
-            embed.set_footer(text="React with ✅ to confirm or ❌ to cancel")
+            embed.set_footer(text="React with <:greentick:1529045309081256026> to confirm or <:redtick:1529045360742502481> to cancel")
             
             confirm_msg = await ctx.send(embed=embed)
-            await confirm_msg.add_reaction("✅")
-            await confirm_msg.add_reaction("❌")
+            await confirm_msg.add_reaction("2705")
+            await confirm_msg.add_reaction("274C")
             
             def check(reaction, user):
                 return user == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == confirm_msg.id
@@ -1402,7 +1402,7 @@ class VerificationView(discord.ui.View):
             
             # Update embed with confirmation
             embed = discord.Embed(
-                title="✅ Verification Complete",
+                title="<:greentick:1529045309081256026> Verification Complete",
                 description=f"Successfully assigned **{role.name}** to {self.target_member.mention}",
                 color=0x00FF00
             )

@@ -366,9 +366,9 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
         self.clear_items()
         container = discord.ui.Container(accent_color=discord.Color.green())
         if self.mode == "edit":
-            text = "## ✅ Embed Updated\n[Jump to message]({0})".format(jump_url)
+            text = "## <:greentick:1529045309081256026> Embed Updated\n[Jump to message]({0})".format(jump_url)
         else:
-            text = "## ✅ Embed Sent\n[Jump to message]({0})".format(jump_url)
+            text = "## <:greentick:1529045309081256026> Embed Sent\n[Jump to message]({0})".format(jump_url)
         container.add_item(discord.ui.TextDisplay(text))
         self.add_item(container)
 
@@ -429,7 +429,7 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
     @staticmethod
     def _error_embed(title: str, description: str) -> discord.Embed:
         return discord.Embed(
-            title=f"❌ {title}", description=description, color=discord.Color.red()
+            title=f"<:redtick:1529045360742502481> {title}", description=description, color=discord.Color.red()
         )
 
     @staticmethod
@@ -495,7 +495,7 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
             parsed = self._parse_channel_id(raw)
             if raw and parsed is None:
                 await interaction.response.send_message(
-                    "❌ Couldn't parse that channel. Use a channel ID or a #mention.",
+                    "<:redtick:1529045360742502481> Couldn't parse that channel. Use a channel ID or a #mention.",
                     ephemeral=True,
                 )
                 return
@@ -507,7 +507,7 @@ class EmbedBuilderDashboard(discord.ui.LayoutView):
                     int(raw)
                 except ValueError:
                     await interaction.response.send_message(
-                        "❌ That doesn't look like a user ID.", ephemeral=True
+                        "<:redtick:1529045360742502481> That doesn't look like a user ID.", ephemeral=True
                     )
                     return
                 self.data["author_id"] = raw

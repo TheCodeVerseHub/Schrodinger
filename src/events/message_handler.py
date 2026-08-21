@@ -57,7 +57,7 @@ class MessageHandler(commands.Cog):
                 channel = None
 
         if not isinstance(channel, discord.TextChannel):
-            await ctx.reply("❌ I can't access the introductions channel in this server.", mention_author=False)
+            await ctx.reply("<:redtick:1529045360742502481> I can't access the introductions channel in this server.", mention_author=False)
             return
 
         history_limit = None
@@ -65,7 +65,7 @@ class MessageHandler(commands.Cog):
             try:
                 history_limit = max(1, int(limit))
             except ValueError:
-                await ctx.reply("❌ Invalid limit. Use `all` or a number (e.g. `?introreact 500`).", mention_author=False)
+                await ctx.reply("<:redtick:1529045360742502481> Invalid limit. Use `all` or a number (e.g. `?introreact 500`).", mention_author=False)
                 return
 
         status = await ctx.reply(
@@ -89,11 +89,11 @@ class MessageHandler(commands.Cog):
                 if processed % 25 == 0:
                     await asyncio.sleep(1)
 
-            await status.edit(content=f"✅ Done. Scanned {scanned} messages; reacted to {processed}.")
+            await status.edit(content=f"<:greentick:1529045309081256026> Done. Scanned {scanned} messages; reacted to {processed}.")
         except discord.Forbidden:
-            await status.edit(content="❌ Missing permissions to read history and/or add reactions.")
+            await status.edit(content="<:redtick:1529045360742502481> Missing permissions to read history and/or add reactions.")
         except Exception as e:
-            await status.edit(content=f"❌ Stopped due to error: {e}")
+            await status.edit(content=f"<:redtick:1529045360742502481> Stopped due to error: {e}")
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -170,14 +170,14 @@ async def build_error_embed(context, error, command=None) -> discord.Embed:
 
     if isinstance(error, (commands.MissingPermissions, app_commands.MissingPermissions)):
         return discord.Embed(
-            title="❌ Missing Permissions",
+            title="<:redtick:1529045360742502481> Missing Permissions",
             description="You don't have permission to use this command!",
             color=discord.Color.red()
         )
 
     if isinstance(error, commands.MissingRequiredArgument):
         return discord.Embed(
-            title="❌ Missing Argument",
+            title="<:redtick:1529045360742502481> Missing Argument",
             description=f"Missing required argument: `{error.param}`\n"
                        f"Use `?help {label}` for usage information.",
             color=discord.Color.red()
@@ -185,7 +185,7 @@ async def build_error_embed(context, error, command=None) -> discord.Embed:
 
     if isinstance(error, commands.BadArgument):
         return discord.Embed(
-            title="❌ Invalid Argument",
+            title="<:redtick:1529045360742502481> Invalid Argument",
             description=f"Invalid argument provided!\nUse `?help {label}` for usage information.",
             color=discord.Color.red()
         )
@@ -199,7 +199,7 @@ async def build_error_embed(context, error, command=None) -> discord.Embed:
 
     if isinstance(error, commands.MemberNotFound):
         return discord.Embed(
-            title="❌ Member Not Found",
+            title="<:redtick:1529045360742502481> Member Not Found",
             description="Could not find the specified member!",
             color=discord.Color.red()
         )
@@ -213,7 +213,7 @@ async def build_error_embed(context, error, command=None) -> discord.Embed:
         exc_info=True,
     )
     return discord.Embed(
-        title="❌ An Error Occurred",
+        title="<:redtick:1529045360742502481> An Error Occurred",
         description="An unexpected error occurred while processing your command.\n"
                    "Please try again later or contact an administrator.",
         color=discord.Color.red()

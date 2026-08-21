@@ -96,7 +96,7 @@ class StickyMessageModal(discord.ui.Modal):
 
             # Send confirmation
             embed = discord.Embed(
-                title="✅ Sticky Message Created",
+                title="<:greentick:1529045309081256026> Sticky Message Created",
                 description=f"Sticky message has been set in {self.channel.mention}",
                 color=0x00ff00
             )
@@ -110,7 +110,7 @@ class StickyMessageModal(discord.ui.Modal):
 
         except discord.Forbidden:
             embed = discord.Embed(
-                title="❌ Permission Error",
+                title="<:redtick:1529045360742502481> Permission Error",
                 description=f"I don't have permission to send messages in {self.channel.mention}.",
                 color=0xff0000
             )
@@ -118,7 +118,7 @@ class StickyMessageModal(discord.ui.Modal):
         except Exception as e:
             logger.exception("Failed to create sticky message in channel %s", self.channel.id)
             embed = discord.Embed(
-                title="❌ Error",
+                title="<:redtick:1529045360742502481> Error",
                 description=f"Failed to create sticky message: {str(e)}",
                 color=0xff0000
             )
@@ -183,7 +183,7 @@ class StickyMessage(commands.Cog):
         target_channel = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
         if target_channel is None:
             embed = discord.Embed(
-                title="❌ Invalid Channel",
+                title="<:redtick:1529045360742502481> Invalid Channel",
                 description="This command can only be used in text channels.",
                 color=0xff0000
             )
@@ -197,7 +197,7 @@ class StickyMessage(commands.Cog):
         # Check if user has permissions in the target channel
         if not target_channel.permissions_for(ctx.author).manage_messages:
             embed = discord.Embed(
-                title="❌ Permission Denied",
+                title="<:redtick:1529045360742502481> Permission Denied",
                 description=f"You don't have `Manage Messages` permission in {target_channel.mention}.",
                 color=0xff0000
             )
@@ -208,7 +208,7 @@ class StickyMessage(commands.Cog):
         bot_member = guild.me
         if bot_member is None or not target_channel.permissions_for(bot_member).send_messages:
             embed = discord.Embed(
-                title="❌ Bot Permission Error",
+                title="<:redtick:1529045360742502481> Bot Permission Error",
                 description=f"I don't have permission to send messages in {target_channel.mention}.",
                 color=0xff0000
             )
@@ -240,7 +240,7 @@ class StickyMessage(commands.Cog):
         target_channel = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
         if target_channel is None:
             embed = discord.Embed(
-                title="❌ Invalid Channel",
+                title="<:redtick:1529045360742502481> Invalid Channel",
                 description="This command can only be used in text channels.",
                 color=0xff0000
             )
@@ -254,7 +254,7 @@ class StickyMessage(commands.Cog):
         # Check if user has permissions in the target channel
         if not target_channel.permissions_for(ctx.author).manage_messages:
             embed = discord.Embed(
-                title="❌ Permission Denied",
+                title="<:redtick:1529045360742502481> Permission Denied",
                 description=f"You don't have `Manage Messages` permission in {target_channel.mention}.",
                 color=0xff0000
             )
@@ -271,7 +271,7 @@ class StickyMessage(commands.Cog):
             
             if not result:
                 embed = discord.Embed(
-                    title="❌ No Sticky Message",
+                    title="<:redtick:1529045360742502481> No Sticky Message",
                     description=f"No sticky message found in {target_channel.mention}.",
                     color=0xff0000
                 )
@@ -300,7 +300,7 @@ class StickyMessage(commands.Cog):
                 pass  # Message might already be deleted or we don't have permission
             
             embed = discord.Embed(
-                title="✅ Sticky Message Removed",
+                title="<:greentick:1529045309081256026> Sticky Message Removed",
                 description=f"Sticky message has been removed from {target_channel.mention}.",
                 color=0x00ff00
             )
@@ -308,7 +308,7 @@ class StickyMessage(commands.Cog):
             
         except Exception as e:
             embed = discord.Embed(
-                title="❌ Error",
+                title="<:redtick:1529045360742502481> Error",
                 description=f"Failed to remove sticky message: {str(e)}",
                 color=0xff0000
             )
@@ -371,7 +371,7 @@ class StickyMessage(commands.Cog):
             
         except Exception as e:
             embed = discord.Embed(
-                title="❌ Error",
+                title="<:redtick:1529045360742502481> Error",
                 description=f"Failed to list sticky messages: {str(e)}",
                 color=0xff0000
             )

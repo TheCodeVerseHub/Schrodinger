@@ -183,7 +183,7 @@ class ReactionRoles(commands.Cog):
             # Check if we're in a guild
             if not interaction.guild:
                 await interaction.followup.send(
-                    "❌ This command can only be used in a server!", 
+                    "<:redtick:1529045360742502481> This command can only be used in a server!", 
                     ephemeral=True
                 )
                 return
@@ -192,21 +192,21 @@ class ReactionRoles(commands.Cog):
             bot_member = channel.guild.get_member(self.bot.user.id)
             if not bot_member:
                 await interaction.followup.send(
-                    "❌ I'm not a member of this server!", 
+                    "<:redtick:1529045360742502481> I'm not a member of this server!", 
                     ephemeral=True
                 )
                 return
                 
             if not channel.permissions_for(bot_member).manage_roles:
                 await interaction.followup.send(
-                    "❌ I need `Manage Roles` permission to create reaction roles!", 
+                    "<:redtick:1529045360742502481> I need `Manage Roles` permission to create reaction roles!", 
                     ephemeral=True
                 )
                 return
             
             if not channel.permissions_for(bot_member).add_reactions:
                 await interaction.followup.send(
-                    "❌ I need `Add Reactions` permission in that channel!", 
+                    "<:redtick:1529045360742502481> I need `Add Reactions` permission in that channel!", 
                     ephemeral=True
                 )
                 return
@@ -224,7 +224,7 @@ class ReactionRoles(commands.Cog):
                     # Check if bot can assign this role
                     if roles[i].position >= bot_member.top_role.position:
                         await interaction.followup.send(
-                            f"❌ I cannot assign the role {roles[i].mention} because it's higher than my highest role!", 
+                            f"<:redtick:1529045360742502481> I cannot assign the role {roles[i].mention} because it's higher than my highest role!", 
                             ephemeral=True
                         )
                         return
@@ -233,7 +233,7 @@ class ReactionRoles(commands.Cog):
             
             if not role_pairs:
                 await interaction.followup.send(
-                    "❌ You must provide at least one emoji-role pair!", 
+                    "<:redtick:1529045360742502481> You must provide at least one emoji-role pair!", 
                     ephemeral=True
                 )
                 return
@@ -282,7 +282,7 @@ class ReactionRoles(commands.Cog):
             
             # Success message
             success_embed = discord.Embed(
-                title="✅ Reaction Role Created",
+                title="<:greentick:1529045309081256026> Reaction Role Created",
                 description=f"Reaction role message created in {channel.mention}!\n"
                            f"[Jump to message]({message.jump_url})\n\n"
                            f"**Role Toggle:** {'Enabled' if role_toggle else 'Disabled'}\n\n"
@@ -294,12 +294,12 @@ class ReactionRoles(commands.Cog):
             
         except discord.Forbidden:
             await interaction.followup.send(
-                "❌ I don't have permission to send messages in that channel!", 
+                "<:redtick:1529045360742502481> I don't have permission to send messages in that channel!", 
                 ephemeral=True
             )
         except Exception as e:
             await interaction.followup.send(
-                f"❌ Error creating reaction role: {str(e)}", 
+                f"<:redtick:1529045360742502481> Error creating reaction role: {str(e)}", 
                 ephemeral=True
             )
     
@@ -409,7 +409,7 @@ class ReactionRoles(commands.Cog):
         """List all reaction role messages in the current server"""
         if not interaction.guild:
             await interaction.response.send_message(
-                "❌ This command can only be used in a server!", 
+                "<:redtick:1529045360742502481> This command can only be used in a server!", 
                 ephemeral=True
             )
             return
@@ -454,14 +454,14 @@ class ReactionRoles(commands.Cog):
         """Remove a reaction role message from tracking"""
         if not interaction.guild:
             await interaction.response.send_message(
-                "❌ This command can only be used in a server!", 
+                "<:redtick:1529045360742502481> This command can only be used in a server!", 
                 ephemeral=True
             )
             return
             
         if message_id not in self.reaction_roles:
             await interaction.response.send_message(
-                "❌ No reaction role found with that message ID!", 
+                "<:redtick:1529045360742502481> No reaction role found with that message ID!", 
                 ephemeral=True
             )
             return
@@ -469,7 +469,7 @@ class ReactionRoles(commands.Cog):
         data = self.reaction_roles[message_id]
         if data["guild_id"] != interaction.guild.id:
             await interaction.response.send_message(
-                "❌ That reaction role message is not in this server!", 
+                "<:redtick:1529045360742502481> That reaction role message is not in this server!", 
                 ephemeral=True
             )
             return
@@ -479,7 +479,7 @@ class ReactionRoles(commands.Cog):
         self.save_reaction_roles()
         
         embed = discord.Embed(
-            title="✅ Reaction Role Removed",
+            title="<:greentick:1529045309081256026> Reaction Role Removed",
             description=f"Reaction role message `{message_id}` has been removed from tracking.\n"
                        f"The message itself is still in the channel but reactions won't assign roles anymore.",
             color=discord.Color.green()

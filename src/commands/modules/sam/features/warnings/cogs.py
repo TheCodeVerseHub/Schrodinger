@@ -97,12 +97,12 @@ class Warnings(commands.Cog):
                 return False, "User not found"
 
             await user.send(embed=embed)
-            return True, "✅ DM sent successfully"
+            return True, "<:greentick:1529045309081256026> DM sent successfully"
 
         except discord.Forbidden:
             return False, "⚠️ User has DMs disabled or blocked the bot"
         except discord.NotFound:
-            return False, "❌ User not found"
+            return False, "<:redtick:1529045360742502481> User not found"
         except Exception as e:
             logger.error(f"Failed to send DM to user {user_id}: {str(e)}")
             return False, f"⚠️ Failed to send DM: {type(e).__name__}"

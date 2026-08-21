@@ -32,7 +32,7 @@ class ThreadCloser(commands.Cog):
             thread = self._get_thread(ctx.channel)
             if thread is None:
                 await ctx.reply(
-                    "❌ Please provide a thread ID or run this command inside a thread."
+                    "<:redtick:1529045360742502481> Please provide a thread ID or run this command inside a thread."
                 )
                 return None
             return thread
@@ -48,7 +48,7 @@ class ThreadCloser(commands.Cog):
             if thread is None:
                 thread = self.bot.get_channel(thread_id)
             if thread is None or not isinstance(thread, discord.Thread):
-                await ctx.reply("❌ Thread not found or invalid ID.")
+                await ctx.reply("<:redtick:1529045360742502481> Thread not found or invalid ID.")
                 return None
             return thread
 
@@ -110,7 +110,7 @@ class ThreadCloser(commands.Cog):
             has_permission = True
 
         if not has_permission:
-            await ctx.reply("❌ Only the ticket owner or staff can close this ticket.")
+            await ctx.reply("<:redtick:1529045360742502481> Only the ticket owner or staff can close this ticket.")
             return
 
         # Delegate to ticket cog's full force-close flow when available so we get logs, transcript, and DM
@@ -225,7 +225,7 @@ class ThreadCloser(commands.Cog):
                     elif ctx.author.id == user_id:
                         has_perm = True
                     if not has_perm:
-                        await ctx.reply("❌ Only the ticket owner or staff can close this ticket.")
+                        await ctx.reply("<:redtick:1529045360742502481> Only the ticket owner or staff can close this ticket.")
                         return
                     if tickets_cog:
                         await tickets_cog.force_close_ticket(
@@ -236,7 +236,7 @@ class ThreadCloser(commands.Cog):
                             announce_in_ticket=True,
                         )
                         return
-                    await ctx.reply("❌ Ticket system is not available right now.")
+                    await ctx.reply("<:redtick:1529045360742502481> Ticket system is not available right now.")
                     return
             # Check if this is a ticket thread (legacy)
             elif isinstance(channel, discord.Thread):
@@ -265,7 +265,7 @@ class ThreadCloser(commands.Cog):
 
         if not (is_mod or is_original_poster):
             await ctx.reply(
-                "❌ Only moderators or the thread creator can close this thread."
+                "<:redtick:1529045360742502481> Only moderators or the thread creator can close this thread."
             )
             return
 
@@ -294,9 +294,9 @@ class ThreadCloser(commands.Cog):
                 f"[Thread] Archived '{thread.name}' (ID: {thread.id}) by {ctx.author}"
             )
         except discord.Forbidden:
-            await ctx.reply("❌ I do not have permission to archive this thread.")
+            await ctx.reply("<:redtick:1529045360742502481> I do not have permission to archive this thread.")
         except Exception as e:
-            await ctx.reply(f"❌ Error archiving thread: {e}")
+            await ctx.reply(f"<:redtick:1529045360742502481> Error archiving thread: {e}")
             print(f"[Thread] Error archiving {thread.id}: {e}")
 
     @commands.command(
@@ -313,7 +313,7 @@ class ThreadCloser(commands.Cog):
                 try:
                     message = await ctx.channel.fetch_message(message_id)
                 except discord.NotFound:
-                    await ctx.reply(f"❌ Message with ID {message_id} not found.")
+                    await ctx.reply(f"<:redtick:1529045360742502481> Message with ID {message_id} not found.")
                     return
             elif ctx.message.reference is not None:
                 try:
@@ -321,15 +321,15 @@ class ThreadCloser(commands.Cog):
                     if ref_msg_id:
                         message = await ctx.channel.fetch_message(ref_msg_id)
                 except discord.NotFound:
-                    await ctx.reply("❌ Referenced message not found.")
+                    await ctx.reply("<:redtick:1529045360742502481> Referenced message not found.")
                     return
             else:
                 await ctx.reply(
-                    "❌ Please provide a message ID or reply to a message to pin."
+                    "<:redtick:1529045360742502481> Please provide a message ID or reply to a message to pin."
                 )
                 return
             if message is None:
-                await ctx.reply("❌ Message could not be resolved.")
+                await ctx.reply("<:redtick:1529045360742502481> Message could not be resolved.")
                 return
             await message.pin()
             channel_str = getattr(
@@ -343,10 +343,10 @@ class ThreadCloser(commands.Cog):
                 )
         except discord.Forbidden:
             await ctx.reply(
-                "❌ I do not have permission to pin messages in this channel."
+                "<:redtick:1529045360742502481> I do not have permission to pin messages in this channel."
             )
         except Exception as e:
-            await ctx.reply(f"❌ Error pinning message: {e}")
+            await ctx.reply(f"<:redtick:1529045360742502481> Error pinning message: {e}")
 
     @commands.command(
         name="unpin", help="Unpin a message in thread/post or current channel."
@@ -362,7 +362,7 @@ class ThreadCloser(commands.Cog):
                 try:
                     message = await ctx.channel.fetch_message(message_id)
                 except discord.NotFound:
-                    await ctx.reply(f"❌ Message with ID {message_id} not found.")
+                    await ctx.reply(f"<:redtick:1529045360742502481> Message with ID {message_id} not found.")
                     return
             elif ctx.message.reference is not None:
                 try:
@@ -370,15 +370,15 @@ class ThreadCloser(commands.Cog):
                     if ref_msg_id:
                         message = await ctx.channel.fetch_message(ref_msg_id)
                 except discord.NotFound:
-                    await ctx.reply("❌ Referenced message not found.")
+                    await ctx.reply("<:redtick:1529045360742502481> Referenced message not found.")
                     return
             else:
                 await ctx.reply(
-                    "❌ Please provide a message ID or reply to a message to unpin."
+                    "<:redtick:1529045360742502481> Please provide a message ID or reply to a message to unpin."
                 )
                 return
             if message is None:
-                await ctx.reply("❌ Message could not be resolved.")
+                await ctx.reply("<:redtick:1529045360742502481> Message could not be resolved.")
                 return
             await message.unpin()
             channel_str = getattr(
@@ -392,10 +392,10 @@ class ThreadCloser(commands.Cog):
                 )
         except discord.Forbidden:
             await ctx.reply(
-                "❌ I do not have permission to unpin messages in this channel."
+                "<:redtick:1529045360742502481> I do not have permission to unpin messages in this channel."
             )
         except Exception as e:
-            await ctx.reply(f"❌ Error unpinning message: {e}")
+            await ctx.reply(f"<:redtick:1529045360742502481> Error unpinning message: {e}")
 
 
 async def setup(bot: commands.Bot):

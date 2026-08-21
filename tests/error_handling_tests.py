@@ -101,7 +101,7 @@ def test_prefix_handler_does_not_short_circuit():
 
     assert ctx.sent, "expected an error embed to be sent"
     embed, _ = ctx.sent[0]
-    assert embed.title == "❌ Missing Permissions"
+    assert embed.title == "<:redtick:1529045360742502481> Missing Permissions"
 
 
 def test_prefix_handler_ignores_command_not_found():
@@ -128,7 +128,7 @@ def test_prefix_handler_logs_unexpected_errors(caplog):
 
     assert ctx.sent
     embed, _ = ctx.sent[0]
-    assert embed.title == "❌ An Error Occurred"
+    assert embed.title == "<:redtick:1529045360742502481> An Error Occurred"
     assert any("Unhandled error in testcmd" in r.message for r in caplog.records)
 
 
@@ -147,7 +147,7 @@ def test_prefix_handler_replies_via_interaction_followup():
 
     assert interaction.calls["followup"], "expected an ephemeral followup"
     embed, kwargs = interaction.calls["followup"][0]
-    assert embed.title == "❌ Missing Permissions"
+    assert embed.title == "<:redtick:1529045360742502481> Missing Permissions"
     assert kwargs.get("ephemeral") is True
 
 
@@ -210,7 +210,7 @@ def test_tree_on_error_sends_permission_embed():
 
     assert interaction.calls["response"]
     embed, kwargs = interaction.calls["response"][0]
-    assert embed.title == "❌ Missing Permissions"
+    assert embed.title == "<:redtick:1529045360742502481> Missing Permissions"
     assert kwargs.get("ephemeral") is True
 
 
@@ -228,4 +228,4 @@ def test_build_error_embed_prefix_and_app_permission_errors_share_title():
             SimpleNamespace(), discord.app_commands.MissingPermissions(["x"]), make_command()
         )
     )
-    assert prefix.title == app.title == "❌ Missing Permissions"
+    assert prefix.title == app.title == "<:redtick:1529045360742502481> Missing Permissions"
