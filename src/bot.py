@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from commands.modules.sam import bridge as sam_bridge
 from utils.json_store import get_guild_prefix
 from utils.helpers import safe_interaction_reply
-from config import AUTHORIZED_GUILD_IDS
+from config import AUTHORIZED_GUILD_IDS, AUTHORISED_ROLE_ID
 from events.message_handler import build_error_embed
 import atexit
 
@@ -32,6 +32,24 @@ AUTHORIZED_SERVERS = AUTHORIZED_GUILD_IDS
 
 # Default prefix (can be overridden per-guild via /prefix)
 DEFAULT_PREFIX = '?'
+
+def _has_authorized_role(member: discord.Member | None) -> bool:
+    """Return True if the member has the required authorized role."""
+    if member is None:
+        return False
+    return any(r.id == AUTHORISED_ROLE_ID for r in member.roles)
+
+
+async def _unauthorized_view() -> discord.ui.LayoutView:
+    """Build a Components V2 'not permitted' card."""
+    container = discord.ui.Container(accent_color=discord.Color(0xED4245))
+    container.add_item(discord.ui.TextDisplay("## Not Permitted"))
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay("You are not permitted to use this command."))
+    view = discord.ui.LayoutView(timeout=None)
+    view.add_item(container)
+    return view
+
 
 async def _dynamic_prefix(bot: commands.Bot, message: discord.Message):
     """Return mention + per-guild prefix (falls back to DEFAULT_PREFIX)."""
@@ -146,19 +164,24 @@ class CodeVerseBot(commands.Bot):
         self.instance_id = INSTANCE_ID
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        """Global check for all interactions - restrict to authorized servers only"""
+        """Global check for all interactions - restrict to authorized servers + role"""
         if interaction.guild and interaction.guild.id not in AUTHORIZED_SERVERS:
             embed = discord.Embed(
-                title="🚫 Unauthorized Server",
+                title="Unauthorized Server",
                 description="This bot can only be used in authorized servers.",
                 color=discord.Color.red()
             )
-            # Safe reply: never raises even if the interaction already expired
-            # (10062) or was responded to between the check and the send.
             await safe_interaction_reply(interaction, embed=embed, ephemeral=True)
-            
             logger.warning(f"Interaction blocked in unauthorized server: {interaction.guild.name} (ID: {interaction.guild.id})")
             return False
+
+        # Role-based authorization
+        member = getattr(interaction, 'user', None)
+        if isinstance(member, discord.Member) and not _has_authorized_role(member):
+            view = await _unauthorized_view()
+            await safe_interaction_reply(interaction, view=view, ephemeral=True)
+            return False
+
         return True
 
     async def check_prefix_commands(self, message):
@@ -319,23 +342,26 @@ async def on_message(message):
     """Process messages and check for prefix commands in authorized servers only"""
     if message.author.bot:
         return
-    
+
     # Block prefix commands in unauthorized servers
     if message.guild and message.guild.id not in AUTHORIZED_SERVERS:
-        # Check if this looks like a command attempt
         if message.content.startswith(DEFAULT_PREFIX):
             embed = discord.Embed(
-                title="🚫 Unauthorized Server",
+                title="Unauthorized Server",
                 description="This bot can only be used in authorized servers.",
                 color=discord.Color.red()
             )
             try:
                 await message.channel.send(embed=embed, delete_after=10)
             except discord.HTTPException:
-                pass  # Ignore if we can't send messages
+                pass
             logger.warning(f"Prefix command blocked in unauthorized server: {message.guild.name} (ID: {message.guild.id})")
         return
-    
+
+    # Block prefix commands from users without the authorized role (silent ignore)
+    if message.guild and not _has_authorized_role(message.author):
+        return  # silently ignore — no response
+
     # Process commands normally in authorized servers
     await bot.process_commands(message)
 
