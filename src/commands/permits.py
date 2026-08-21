@@ -262,6 +262,67 @@ class PermitSystem(commands.Cog):
         embed = discord.Embed(title="Permit Roles", description=role_list, color=0x00aaff)
         await interaction.response.send_message(embed=embed)
 
+    @commands.command(name="permits")
+    @commands.guild_only()
+    async def permits_prefix(self, ctx: commands.Context):
+        """Show all available permits and their permissions."""
+        conn = sqlite3.connect(DATABASE_NAME)
+        cursor = conn.cursor()
+
+        # Get all permit roles for this guild
+        cursor.execute(
+            "SELECT name FROM permit_roles WHERE guild_id = ? ORDER BY name",
+            (ctx.guild.id,),
+        )
+        permit_names = [row[0] for row in cursor.fetchall()]
+
+        if not permit_names:
+            conn.close()
+            container = discord.ui.Container(accent_color=discord.Color(0x5865F2))
+            container.add_item(discord.ui.TextDisplay("## Permits"))
+            container.add_item(discord.ui.Separator())
+            container.add_item(discord.ui.TextDisplay("No permits have been created yet. Use `/permit new` to create one."))
+            view = discord.ui.LayoutView(timeout=None)
+            view.add_item(container)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
+            return
+
+        # Get permissions for each permit role
+        lines = []
+        for name in permit_names:
+            cursor.execute(
+                "SELECT permission FROM permit_permissions WHERE role_name = ? AND guild_id = ?",
+                (name, ctx.guild.id),
+            )
+            perms = [row[0] for row in cursor.fetchall()]
+            perm_str = ", ".join(f"`{p}`" for p in perms) if perms else "*none set*"
+            lines.append(f"**{name}**\n{perm_str}")
+
+        # Get assignment counts
+        cursor.execute(
+            "SELECT role_name, COUNT(*) FROM permit_assignments WHERE guild_id = ? GROUP BY role_name",
+            (ctx.guild.id,),
+        )
+        counts = {row[0]: row[1] for row in cursor.fetchall()}
+        conn.close()
+
+        container = discord.ui.Container(accent_color=discord.Color(0x5865F2))
+        container.add_item(discord.ui.TextDisplay(f"## Permits ({len(permit_names)})"))
+        container.add_item(discord.ui.Separator())
+
+        for entry in lines:
+            container.add_item(discord.ui.TextDisplay(entry))
+            container.add_item(discord.ui.Separator())
+
+        # Add footer with assignment counts
+        count_parts = [f"**{name}**: {counts.get(name, 0)} user{'s' if counts.get(name, 0) != 1 else ''}" for name in permit_names]
+        container.add_item(discord.ui.TextDisplay("\n".join(count_parts)))
+        container.add_item(discord.ui.TextDisplay("\n*Use `/permit add` to assign, `/permit check` to see who has a permit.*"))
+
+        view = discord.ui.LayoutView(timeout=None)
+        view.add_item(container)
+        await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
+
     @permit_group.command(name="check")
     @app_commands.describe(member="Member to check")
     async def permit_check(self, interaction: discord.Interaction, member: discord.Member):
