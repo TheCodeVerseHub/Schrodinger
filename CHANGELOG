@@ -4,11 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`?ls channels ?v`**: Audit which roles/users can view a specific channel via permission overwrites.
+- **`?ls noroles`**: List all members who have no roles (only @everyone).
+- **`?permits`**: Prefix-only command to show all available permits with their permissions and user counts in a Components V2 container.
+- **Authorized role gate**: Only users with `AUTHORISED_ROLE_ID` (or the bot owner) can use bot commands. Unauthorized prefix commands are silently ignored; slash commands show a "Not Permitted" Components V2 card.
+- **Non-appealable mutes**: `/timeout appeal:False` (slash) or `?mute @user 10m reason ?a` (prefix) marks a timeout as non-appealable. The appeals system skips the DM for non-appealable mutes.
+- **Warn logging**: Warnings are now logged to `LOG_CHANNEL_WARNINGS_ID` via the centralized logging system.
+- **Custom Discord emojis**: Replaced Unicode emojis with `<:greentick:1529045309081256026>` and `<:redtick:1529045360742502481>` in all bot embed titles, messages, and text content.
+- **R13 (Use Common Sense)**: Added new rule R13 to the rules system.
+- **`AUTHORISED_ROLE_ID`**: New `.env` variable to control which role can use the bot.
+
+### Changed
+- **Permit system works everywhere**: All moderation commands (kick, ban, timeout, warn, lock, unlock, purge, clean, slowmode, nickname, softban, unban, untimeout) now respect the custom permit system, not just native Discord permissions.
+- **Components V2 moderation cards**: All moderation confirmations (kick, ban, softban, timeout, untimeout, warn, unwarn, lock, unlock, slowmode, nickname) now render as clean Components V2 containers with accent colors and no emojis.
+- **Specific error messages**: Every error message now names the exact permission needed, tells the user to ask an admin, and explains where to fix it.
+- **Server rules updated**: R1-R12 updated with new wording (R2 dating warning, R7 drugs/weed, R8 AI content policy, R9 English requirement, R10 streaming rules, R11 alt accounts/tags/pronouns, R12 ban appeal link). R34 removed.
+
+### Removed
+- **R34 rule**: Removed the R34 ("Heyy That's Not Allowed!") command and rule text.
+- **APPEAL_SUBMITTED log**: Removed the noisy "User submitted a timeout appeal" embed from the appeals log channel.
+
 ### Fixed
 - **Tempban persistence**:
     - Tempbans used to be scheduled with an in-memory `asyncio.sleep` task, so any bot restart converted them into permanent bans. Tempbans are now persisted to the `tempbans` table in the main database and re-scheduled (or executed immediately if already expired) when the bot comes back online.
 - **Appeals System**:
     - Timeout appeal notifications (including the `@here` staff alert) could be sent to arbitrary channels because the review channel was resolved by channel-name matching and fell back to the guild's first text channel (a public channel). Appeal content now only ever goes to the configured appeals channel.
+- **Lint errors**: Fixed all ruff-detected issues across 13 source files (unused imports, bare excepts, one-liner statements, unused variables).
 
 ### Changed
 - **Appeals System**:

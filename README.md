@@ -22,7 +22,7 @@
 - **Centralized logging** -> webhook-based event logging with per-guild channel configuration.
 - **Thread management** -> close/archive, pin, and unpin threads.
 - **Embed builder & server tooling** -> interactive embed creator plus `?ls` channel/role/permission auditing tools, including `?ls channels ?v` (view permissions) and `?ls noroles` (members with no roles).
-- **Rules & community** -> quick rule-reference commands (`?r1`…`?r12`, `?tldr`).
+- **Rules & community** -> quick rule-reference commands (`?r1`…`?r13`, `?tldr`).
 - **Protection** -> protected-channel auto-timeout, authorized-server enforcement, and more.
 
 > **Prefix:** `?` (per-guild override via `/prefix`) • **Slash:** `/` • **Access:** Authorized role or bot owner only
@@ -40,7 +40,9 @@
 - **Components V2 dashboards** -> major surfaces now render with Discord's new Components V2 (containers, text displays, sections) instead of classic embeds: the `/help` menu (categories fit on one page, command detail cards), all `?ls` auditing tools (no more 4000-char truncation hacks), the `?appeals` admin list (one Section per appeal with colored status badges + avatar thumbnails), moderation log cards (ban/unban/kick/timeout/warn entries with user-avatar accessories), and `?diag` (a color-coded health dashboard, green/red per subsystem).
 - **Embed builder overhaul** -> `/embed` is now an interactive Components V2 builder: an ephemeral dashboard where every section (title, description, color, footer, pre-message, author, media, webhook, link button, target channel) has an Edit button that opens a modal, plus Save & Cancel. Title is optional, you can set the webhook name/avatar the embed is sent as, add a bottom link button, and `/editembed` re-opens the same builder pre-filled for in-place edits.
 - **Appeals** -> accepting an appeal whose timeout already expired (or whose member left) no longer approves a dead punishment: the accept is blocked, the appeal is auto-resolved, and it's logged to the appeals channel. Tempbans are also persisted to the database so they survive bot restarts.
-- **Channel update logging** -> permission change entries no longer use ✅/❌/⬜ emojis; each change is now shown as inline code (`added: send_messages`, `removed: view_channel`, `reset: read_messages`).
+- **Channel update logging** -> permission change entries no longer use check/cross emojis; each change is now shown as inline code (`added: send_messages`, `removed: view_channel`, `reset: read_messages`).
+- **Custom Discord emojis** -> bot messages now use `<:greentick:1529045309081256026>` and `<:redtick:1529045360742502481>` instead of Unicode emojis.
+- **Updated server rules** -> R1-R12 updated with new wording, R13 (Use Common Sense) added, R34 removed.
 - **Permit management commands** -> added `/permit delete`, `/permit rename`, and `/permit check-all` (paginated view of every user with permits).
 - **Environment-based configuration** -> all Discord channel/category/user/role/guild IDs moved out of the code into a single `.env` file (fallback defaults live in `config.py`).
 
@@ -173,7 +175,8 @@ A full, maintained reference lives in [`docs/COMMAND_REFERENCE.md`](docs/COMMAND
 |---------|-------------|
 | `/embed` • `/editembed` | Interactive Components V2 embed builder (author, webhook identity, link button) |
 | `?ls role/perms/perm/noperms/noroles/members/channels/categories/bots/boosters` | Server auditing tools (prefix only, `?ls channels ?v` for view audit) |
-| `?r1`…`?r12` • `?r34` • `?tldr` | Quick rule reference (prefix only) |
+| `?r1`…`?r13` • `?tldr` | Quick rule reference (prefix only) |
+| `?permits` | Show all available permits with permissions |
 
 ## Project Structure
 
