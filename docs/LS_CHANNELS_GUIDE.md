@@ -2,15 +2,18 @@
 
 The `?ls channels` command allows you to audit channel permissions efficiently. You can list all channels or filter them to find where a specific user or role has a certain permission.
 
-## syntax
+## Syntax
 
 ```
 ?ls channels [?w <Target> <Permission>]
+?ls channels ?v <channel>
 ```
 
 -   **`?w`**: The flag that triggers the "where" filter.
 -   **`<Target>`**: The User, Role, or Special Entity (e.g., `everyone`, `here`) to check.
 -   **`<Permission>`**: The specific permission to check for.
+-   **`?v`**: Audit which roles/users can **view** a specific channel.
+-   **`<channel>`**: Channel mention, name, or ID.
 
 ---
 
@@ -35,6 +38,12 @@ The `?ls channels` command allows you to audit channel permissions efficiently. 
     ```
     ?ls channels ?w Everyone Admin
     ```
+
+5.  **Audit who can view a specific channel:**
+    ```
+    ?ls channels ?v #general
+    ```
+    Shows roles with explicit allow/deny, users with explicit overwrites, and inherited permissions via @everyone.
 
 ---
 

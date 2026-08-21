@@ -12,7 +12,7 @@
 
 ## Features Overview
 
-- **Moderation suite** -> purge, kick, ban, softban, timeout (`?mute` works as a prefix alias), slowmode, locks/lockdowns, tempban, and more, with permit-based delegation for staff.
+- **Moderation suite** -> purge, kick, ban, softban, timeout (`?mute` works as a prefix alias), slowmode, locks/lockdowns, tempban, and more, with permit-based delegation for staff. Mutes can be marked non-appealable via `?a` tag (prefix) or `appeal:False` (slash).
 - **Warning system** -> issue, revoke, and review warnings (`/warn`, `/warnings view|modify|clear`).
 - **Support tickets** -> persistent, thread-based ticket system with category routing, transcripts, and logging.
 - **Permit system** -> create named permission groups (roles), assign them to members, and let staff act without native Discord permissions. Full lifecycle: `new`, `add`, `list`, `check`, `delete`, `rename`, `check-all`.
@@ -21,14 +21,22 @@
 - **Appeals** -> ban/mute appeals with DM workflow and staff review.
 - **Centralized logging** -> webhook-based event logging with per-guild channel configuration.
 - **Thread management** -> close/archive, pin, and unpin threads.
-- **Embed builder & server tooling** -> interactive embed creator plus `?ls` channel/role/permission auditing tools.
+- **Embed builder & server tooling** -> interactive embed creator plus `?ls` channel/role/permission auditing tools, including `?ls channels ?v` (view permissions) and `?ls noroles` (members with no roles).
 - **Rules & community** -> quick rule-reference commands (`?r1`…`?r12`, `?tldr`).
 - **Protection** -> protected-channel auto-timeout, authorized-server enforcement, and more.
 
-> **Prefix:** `?` (per-guild override via `/prefix`) • **Slash:** `/`
+> **Prefix:** `?` (per-guild override via `/prefix`) • **Slash:** `/` • **Access:** Authorized role or bot owner only
 
 ## Recent Changes
 
+- **Authorized role gate** -> only users with the `AUTHORISED_ROLE_ID` role (or the bot owner) can use bot commands. Unauthorized prefix commands are silently ignored; slash commands show a "Not Permitted" card.
+- **Permit system works everywhere** -> all moderation commands (kick, ban, timeout, warn, lock, unlock, purge, clean, slowmode, nickname, softban, unban, untimeout) now respect the custom permit system, not just native Discord permissions.
+- **Non-appealable mutes** -> `/timeout appeal:False` (slash) or `?mute @user 10m reason ?a` (prefix) marks a timeout as non-appealable. The appeals system skips the DM for non-appealable mutes.
+- **Components V2 moderation cards** -> all moderation confirmations (kick, ban, softban, timeout, untimeout, warn, unwarn, lock, unlock, slowmode, nickname) now render as clean Components V2 containers with accent colors and no emojis.
+- **Specific error messages** -> every error message now names the exact permission needed, tells the user to ask an admin, and explains where to fix it.
+- **`?ls channels ?v`** -> audit which roles/users can view a specific channel via permission overwrites.
+- **`?ls noroles`** -> list all members who have no roles (only @everyone).
+- **Warn logging** -> warnings are now logged to `LOG_CHANNEL_WARNINGS_ID` via the centralized logging system.
 - **Components V2 dashboards** -> major surfaces now render with Discord's new Components V2 (containers, text displays, sections) instead of classic embeds: the `/help` menu (categories fit on one page, command detail cards), all `?ls` auditing tools (no more 4000-char truncation hacks), the `?appeals` admin list (one Section per appeal with colored status badges + avatar thumbnails), moderation log cards (ban/unban/kick/timeout/warn entries with user-avatar accessories), and `?diag` (a color-coded health dashboard, green/red per subsystem).
 - **Embed builder overhaul** -> `/embed` is now an interactive Components V2 builder: an ephemeral dashboard where every section (title, description, color, footer, pre-message, author, media, webhook, link button, target channel) has an Edit button that opens a modal, plus Save & Cancel. Title is optional, you can set the webhook name/avatar the embed is sent as, add a bottom link button, and `/editembed` re-opens the same builder pre-filled for in-place edits.
 - **Appeals** -> accepting an appeal whose timeout already expired (or whose member left) no longer approves a dead punishment: the accept is blocked, the appeal is auto-resolved, and it's logged to the appeals channel. Tempbans are also persisted to the database so they survive bot restarts.
@@ -109,7 +117,7 @@ A full, maintained reference lives in [`docs/COMMAND_REFERENCE.md`](docs/COMMAND
 |---------|-------------|
 | `/purge` • `/clean` | Delete messages / clean bot messages |
 | `/kick` • `/ban` • `/unban` • `/softban` | Member removal |
-| `/timeout` (alias `?mute`) • `/untimeout` (alias `?unmute`) • `/tempban` | Temporary actions |
+| `/timeout` (alias `?mute`) • `/untimeout` (alias `?unmute`) • `/tempban` | Temporary actions (`?a` tag or `appeal:False` for non-appealable) |
 | `/slowmode` • `/lock` • `/unlock` • `/lockdown` • `/unlockdown` | Channel control |
 | `/nuke` • `/massban` | Owner-only destructive tools |
 | `/role` • `/addmod` • `/nickname` | Role & nickname management |
@@ -164,7 +172,7 @@ A full, maintained reference lives in [`docs/COMMAND_REFERENCE.md`](docs/COMMAND
 | Command | Description |
 |---------|-------------|
 | `/embed` • `/editembed` | Interactive Components V2 embed builder (author, webhook identity, link button) |
-| `?ls role/perms/perm/noperms/members/channels/categories/bots/boosters` | Server auditing tools (prefix only) |
+| `?ls role/perms/perm/noperms/noroles/members/channels/categories/bots/boosters` | Server auditing tools (prefix only, `?ls channels ?v` for view audit) |
 | `?r1`…`?r12` • `?r34` • `?tldr` | Quick rule reference (prefix only) |
 
 ## Project Structure
@@ -219,7 +227,7 @@ The bot reads all configuration from `.env` via `config.py`. Copy `.env.example`
 
 **Roles:** `MODERATION_ROLE_ID`, `STAFF_ROLE_ID`, `ADMIN_BYPASS_ROLE_ID`, `HELP_MODERATOR_ROLE_ID`, `VERIFY_STREAM_ROLE_ID`, `VERIFY_VOICE_ROLE_ID`, `VERIFY_EMBED_ROLE_ID`, `VERIFY_JOIN_VC_ROLE_ID`
 
-**Users:** `BOT_OWNER_ID`, `APPEALS_MODERATOR_USER_ID`
+**Users:** `BOT_OWNER_ID`, `APPEALS_MODERATOR_USER_ID`, `AUTHORISED_ROLE_ID` (role required to use the bot)
 
 **Channels:** `INTRODUCTION_CHANNEL_ID`, `WELCOME_ROLES_CHANNEL_ID`, `WELCOME_GENERAL_CHANNEL_ID`, `WELCOME_IDEAS_CHANNEL_ID`, `HELP_FORUM_ID`, `WELCOME_TICKET_CHANNEL_ID`, `HELP_NOTIFY_TARGET_CHANNEL_ID`, `HELP_GUIDE_CHANNEL_ID`, `REPORT_CHANNEL_ID`, `PROTECTED_CHANNEL_ID`, `TICKET_LOGS_CHANNEL_ID`, `APPEALS_LOG_CHANNEL_ID`
 

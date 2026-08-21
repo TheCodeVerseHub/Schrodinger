@@ -67,7 +67,7 @@ This document provides a comprehensive list of all commands available in the Cod
 | `/softban`, `?softban` | Ban and immediately unban to delete recent messages | `/softban <member> [reason]` | Ban Members |
 | `/role`, `?role` | Add or remove a role from a user | `/role <member> <role>` | Manage Roles |
 | `/addmod`, `?addmod` | Promote a user to the configured moderator role | `/addmod <member>` | Administrator |
-| `/timeout`, `?timeout` (alias `?mute`) | Timeout a member for a duration (`10m`, `2h`, `1d`); `?mute` is a prefix-only alias of `/timeout` | `/timeout <member> <duration> [reason]` | Moderate Members |
+| `/timeout`, `?timeout` (alias `?mute`) | Timeout a member for a duration (`10m`, `2h`, `1d`). Slash: add `appeal:False` for non-appealable. Prefix: add `?a` tag to reason. | `/timeout <member> <duration> [reason] [appeal]` | Moderate Members |
 | `/untimeout`, `?untimeout` (alias `?unmute`) | Remove a timeout from a member; `?unmute` is a prefix-only alias of `/untimeout` | `/untimeout <member> [reason]` | Moderate Members |
 | `/slowmode`, `?slowmode` | View or set slowmode (0–21600s) | `/slowmode [seconds]` | Manage Channels |
 | `/lock`, `?lock` | Lock a channel or thread | `/lock [channel]` | Manage Channels |
@@ -105,10 +105,10 @@ This document provides a comprehensive list of all commands available in the Cod
 
 | Command | Description | Usage | Permission |
 |---------|-------------|-------|------------|
-| `/warn`, `?warn` | Issue a warning to a user | `/warn <member> [reason]` | Kick Members |
-| `/unwarn`, `?unwarn` | Remove a warning by ID | `/unwarn <warning_id>` | Kick Members |
-| `/warnings view`, `?warnings view` | View all warnings for a user | `/warnings view <member>` | Kick Members |
-| `/warnings modify`, `?warnings modify` | Revoke a warning by case ID | `/warnings modify <case_id> [reason]` | Kick Members |
+| `/warn`, `?warn` | Issue a warning to a user (logged to warnings log channel) | `/warn <member> [reason]` | `warn_members` or `kick_members` permit |
+| `/unwarn`, `?unwarn` | Remove a warning by ID | `/unwarn <warning_id>` | `warn_members` or `kick_members` permit |
+| `/warnings view`, `?warnings view` | View all warnings for a user | `/warnings view <member>` | None |
+| `/warnings modify`, `?warnings modify` | Revoke a warning by case ID | `/warnings modify <case_id> [reason]` | `warn_members` or `kick_members` permit |
 | `/warnings clear`, `?warnings clear` | Clear all warnings for a user | `/warnings clear <member> [reason]` | Administrator |
 
 ---
@@ -232,7 +232,9 @@ Default log destinations are configured in `.env` (`LOG_CHANNEL_*_ID` variables)
 | `?ls perm <permission>` | See which roles have a specific permission |
 | `?ls perms [role]` | List functional roles, or permissions of a specific role |
 | `?ls noperms` | List cosmetic roles (no permissions) |
+| `?ls noroles` | List members who have no roles (only @everyone) |
 | `?ls channels [?w <Target> <Perm>]` | List channels, optionally filter by permission |
+| `?ls channels ?v <channel>` | Show which roles/users can view a specific channel |
 | `?ls categories [?w <Target> <Perm>]` | List categories, optionally filter by permission |
 | `?ls bots` | List all bots in the server |
 | `?ls boosters` | List server boosters |

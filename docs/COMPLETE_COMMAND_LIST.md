@@ -212,7 +212,9 @@ Commands are hybrid unless marked **(prefix only)** or **(slash only)**.
 | `?ls perm <permission>` | Roles with a permission |
 | `?ls perms [role]` | Functional roles / role permissions |
 | `?ls noperms` | Cosmetic roles |
+| `?ls noroles` | Members with no roles |
 | `?ls channels [?w Target Perm]` | Channels (optionally filtered) |
+| `?ls channels ?v <channel>` | Who can view a channel |
 | `?ls categories [?w Target Perm]` | Categories (optionally filtered) |
 | `?ls bots` | All bots |
 | `?ls boosters` | Server boosters |
