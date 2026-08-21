@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from commands.modules.sam import bridge as sam_bridge
 from utils.json_store import get_guild_prefix
 from utils.helpers import safe_interaction_reply
-from config import AUTHORIZED_GUILD_IDS, AUTHORISED_ROLE_ID
+from config import AUTHORIZED_GUILD_IDS, AUTHORISED_ROLE_ID, BOT_OWNER_ID
 from events.message_handler import build_error_embed
 import atexit
 
@@ -34,9 +34,11 @@ AUTHORIZED_SERVERS = AUTHORIZED_GUILD_IDS
 DEFAULT_PREFIX = '?'
 
 def _has_authorized_role(member: discord.Member | None) -> bool:
-    """Return True if the member has the required authorized role."""
+    """Return True if the member has the required authorized role or is the bot owner."""
     if member is None:
         return False
+    if member.id == BOT_OWNER_ID:
+        return True
     return any(r.id == AUTHORISED_ROLE_ID for r in member.roles)
 
 
