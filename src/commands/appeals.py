@@ -2655,21 +2655,39 @@ class Appeals(commands.Cog):
             except Exception as e:
                 print(f"[Appeals] Error fetching timeout audit logs: {e}")
 
+            # Check if the timeout is appealable (moderators can mark non-appealable
+            # by including "appealable:false" in the audit reason).
+            appealable = True
+            reason_lower = reason.lower()
+            if "appealable:false" in reason_lower:
+                appealable = False
+            elif "appealable:true" in reason_lower:
+                appealable = True
+            # Strip the appealable tag from the reason before logging/DM
+            clean_reason = re.sub(r"\|?\s*appealable:(true|false)\s*", "", reason, flags=re.IGNORECASE).strip()
+            if not clean_reason:
+                clean_reason = "No reason provided"
+
             print(
-                f"[Appeals] Timeout APPLIED to {after} ({after.id}): before={before_timeout}, after={after_timeout}, reason={reason}"
+                f"[Appeals] Timeout APPLIED to {after} ({after.id}): before={before_timeout}, after={after_timeout}, reason={clean_reason}, appealable={appealable}"
             )
 
-            # Send appeal form (logs will be sent by _send_appeal_form)
-            await self._send_appeal_form(
-                after,
-                after.guild,
-                "timed out",
-                reason,
-                issued_at=entry.created_at
-                if "entry" in locals() and entry.created_at
-                else None,
-                expires_at=after_timeout,
-            )
+            # Only send appeal form if the timeout is appealable
+            if appealable:
+                await self._send_appeal_form(
+                    after,
+                    after.guild,
+                    "timed out",
+                    clean_reason,
+                    issued_at=entry.created_at
+                    if "entry" in locals() and entry.created_at
+                    else None,
+                    expires_at=after_timeout,
+                )
+            else:
+                print(
+                    f"[Appeals] Skipping appeal DM for {after} ({after.id}) - timeout marked as non-appealable"
+                )
 
         # Check if timeout was REMOVED before expiry (manual untimeout/appeal approved)
         elif before_timeout is not None and after_timeout is None:

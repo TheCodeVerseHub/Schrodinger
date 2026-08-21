@@ -468,12 +468,16 @@ class ModCog(commands.Cog):
     @app_commands.describe(
         member="Member to timeout",
         duration="Duration (e.g., 10m, 2h, 1d)",
-        reason="Reason for the timeout"
+        reason="Reason for the timeout",
+        appeal="Whether the user can appeal this timeout (default: True)",
     )
     @commands.bot_has_permissions(moderate_members=True)
     @commands.guild_only()
-    async def timeout(self, ctx: commands.Context, member: discord.Member, duration: str, *, reason: str = "No reason provided"):
-        """Timeout a member for a specified duration"""
+    async def timeout(
+        self, ctx: commands.Context, member: discord.Member, duration: str,
+        *, reason: str = "No reason provided", appeal: Optional[bool] = None,
+    ):
+        """Timeout a member. Slash: /timeout ... appeal:False  Prefix: ?mute ... reason ?a (non-appealable)"""
         if not self._check_permit(ctx, "moderate_members"):
             return await self._safe_reply(ctx, "You need the 'Moderate Members' permission or a matching permit to use this command.")
         if member == ctx.author:
@@ -481,6 +485,16 @@ class ModCog(commands.Cog):
         if isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
                 return await self._safe_reply(ctx, "Cannot complete this action. Their highest role is equal to or above yours. Only the server owner can act on members with higher roles.")
+
+        # Parse ?a tag from prefix reason (e.g. "spam ?a" -> non-appealable)
+        appealable = True
+        if appeal is not None:
+            appealable = appeal
+        if "?a" in reason.lower():
+            appealable = False
+            reason = re.sub(r"\s*\?a\s*", "", reason, flags=re.IGNORECASE).strip() or "No reason provided"
+        if not appealable and reason == "No reason provided":
+            reason = "No reason provided"
 
         # Parse duration
         time_regex = re.compile(r"(\d+)([smhd])")
@@ -508,8 +522,11 @@ class ModCog(commands.Cog):
         try:
             timeout_until = datetime.now(timezone.utc) + timedelta(seconds=total_seconds)
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, reason, "TIMEOUT_APPLIED")
-            audit_reason = f"{reason} | By: {ctx.author} ({ctx.author.id})"
+            # Embed appealable flag in the audit reason so appeals.py can detect it.
+            appeal_tag = "appealable:true" if appealable else "appealable:false"
+            audit_reason = f"{reason} | By: {ctx.author} ({ctx.author.id}) | {appeal_tag}"
             await member.timeout(timeout_until, reason=audit_reason)
+            appeal_text = "Appealable" if appealable else "Non-appealable"
             view = self._mod_action_card(
                 "Member Timed Out", "timeout",
                 user=member,
@@ -519,6 +536,7 @@ class ModCog(commands.Cog):
                     "Duration": duration,
                     "Expires": f"<t:{int(timeout_until.timestamp())}:F>",
                     "Reason": reason,
+                    "Appeal": appeal_text,
                     "Moderator": ctx.author.mention,
                 },
             )
