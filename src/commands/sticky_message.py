@@ -53,7 +53,7 @@ class StickyMessageModal(discord.ui.Modal):
             if not interaction.guild:
                 await safe_interaction_reply(
                     interaction,
-                    content="❌ This command can only be used in servers.",
+                    content="This command can only be used in a server, not in DMs.",
                     ephemeral=True,
                 )
                 return
@@ -177,7 +177,7 @@ class StickyMessage(commands.Cog):
 
         guild = ctx.guild
         if guild is None:
-            await ctx.send("❌ This command can only be used in servers.")
+            await ctx.send("This command can only be used in a server, not in DMs.")
             return
 
         target_channel = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
@@ -191,7 +191,7 @@ class StickyMessage(commands.Cog):
             return
 
         if not isinstance(ctx.author, discord.Member):
-            await ctx.send("❌ This command can only be used by server members.")
+            await ctx.send("This command can only be used by server members. Try using the slash command version instead.")
             return
         
         # Check if user has permissions in the target channel
@@ -217,7 +217,7 @@ class StickyMessage(commands.Cog):
         
         # Open the modal for creating sticky message
         if ctx.interaction is None:
-            await ctx.send("❌ Please use the slash version of this command to open the modal.")
+            await ctx.send("This feature requires a slash command interaction. Use the slash command version of this command instead.")
             return
 
         modal = StickyMessageModal(self, target_channel)
@@ -234,7 +234,7 @@ class StickyMessage(commands.Cog):
 
         guild = ctx.guild
         if guild is None:
-            await ctx.send("❌ This command can only be used in servers.")
+            await ctx.send("This command can only be used in a server, not in DMs.")
             return
 
         target_channel = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
@@ -248,7 +248,7 @@ class StickyMessage(commands.Cog):
             return
 
         if not isinstance(ctx.author, discord.Member):
-            await ctx.send("❌ This command can only be used by server members.")
+            await ctx.send("This command can only be used by server members. Try using the slash command version instead.")
             return
         
         # Check if user has permissions in the target channel
@@ -322,7 +322,7 @@ class StickyMessage(commands.Cog):
         
         try:
             if ctx.guild is None:
-                await ctx.send("❌ This command can only be used in servers.")
+                await ctx.send("This command can only be used in a server, not in DMs.")
                 return
 
             conn = sqlite3.connect(DATABASE_NAME)

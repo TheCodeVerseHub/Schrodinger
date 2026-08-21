@@ -153,19 +153,19 @@ class AdvancedModeration(commands.Cog):
         """Temporarily ban a member (max 7 days for safety)"""
         # Safety checks
         if not self._check_rate_limit(ctx.author.id, "tempban", 3, 300):  # 3 tempbans per 5 minutes
-            await ctx.send("❌ Rate limit: You can only use tempban 3 times per 5 minutes.", ephemeral=True)
+            await ctx.send("Rate limit reached. You can only use tempban 3 times per 5 minutes. Please wait before trying again.", ephemeral=True)
             return
             
         if duration > 10080:  # Max 7 days
-            await ctx.send("❌ Maximum tempban duration is 7 days (10080 minutes)", ephemeral=True)
+            await ctx.send("The maximum tempban duration is 7 days. Choose a shorter duration.", ephemeral=True)
             return
             
         if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-            await ctx.send("❌ You cannot ban someone with equal or higher role", ephemeral=True)
+            await ctx.send("Cannot ban this member. Their highest role is equal to or above yours. Only the server owner can ban members with higher roles.", ephemeral=True)
             return
             
         if member == ctx.guild.owner:
-            await ctx.send("❌ Cannot ban the server owner", ephemeral=True)
+            await ctx.send("Cannot ban the server owner. Only Discord can remove a server owner.", ephemeral=True)
             return
 
         try:
@@ -201,10 +201,10 @@ class AdvancedModeration(commands.Cog):
             
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
-            await ctx.send("❌ I don't have permission to ban this member", ephemeral=True)
+            await ctx.send("I'm missing the 'Ban Members' permission in this server. Ask an admin to grant me that permission in Server Settings > Roles.", ephemeral=True)
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
-            await ctx.send(f"❌ Error occurred: {str(e)}", ephemeral=True)
+            await ctx.send(f"An error occurred: {e}. Contact an admin if this persists.", ephemeral=True)
 
     async def _execute_unban(self, guild: discord.Guild, user_id: int, tempban_id: Optional[int] = None, reason: str = "Temporary ban expired"):
         """Unban a user and clean up the persisted tempban record.
@@ -244,14 +244,14 @@ class AdvancedModeration(commands.Cog):
         """Hide a channel from @everyone"""
         guild = ctx.guild
         if guild is None:
-            await ctx.send("❌ This command can only be used in a server.")
+            await ctx.send("This command can only be used in a server, not in DMs.")
             return
 
         resolved_channel = channel or ctx.channel
 
         # Type guard to ensure channel is TextChannel
         if not isinstance(resolved_channel, discord.TextChannel):
-            await ctx.send("❌ This command can only be used in text channels.", ephemeral=True)
+            await ctx.send("This command can only be used in text channels, not in voice channels or DMs.", ephemeral=True)
             return
 
         target_channel: discord.TextChannel = resolved_channel
@@ -281,9 +281,9 @@ class AdvancedModeration(commands.Cog):
                 )
             
         except discord.Forbidden:
-            await ctx.send("❌ I don't have permission to manage this channel", ephemeral=True)
+            await ctx.send("I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.", ephemeral=True)
         except Exception as e:
-            await ctx.send(f"❌ Error occurred: {str(e)}", ephemeral=True)
+            await ctx.send(f"An error occurred: {e}. Contact an admin if this persists.", ephemeral=True)
 
     @commands.command(name="unhide")
     @commands.has_permissions(manage_channels=True)
@@ -291,14 +291,14 @@ class AdvancedModeration(commands.Cog):
         """Unhide a channel for @everyone"""
         guild = ctx.guild
         if guild is None:
-            await ctx.send("❌ This command can only be used in a server.")
+            await ctx.send("This command can only be used in a server, not in DMs.")
             return
 
         resolved_channel = channel or ctx.channel
 
         # Type guard to ensure channel is TextChannel
         if not isinstance(resolved_channel, discord.TextChannel):
-            await ctx.send("❌ This command can only be used in text channels.", ephemeral=True)
+            await ctx.send("This command can only be used in text channels, not in voice channels or DMs.", ephemeral=True)
             return
 
         target_channel: discord.TextChannel = resolved_channel
@@ -328,9 +328,9 @@ class AdvancedModeration(commands.Cog):
                 )
             
         except discord.Forbidden:
-            await ctx.send("❌ I don't have permission to manage this channel", ephemeral=True)
+            await ctx.send("I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.", ephemeral=True)
         except Exception as e:
-            await ctx.send(f"❌ Error occurred: {str(e)}", ephemeral=True)
+            await ctx.send(f"An error occurred: {e}. Contact an admin if this persists.", ephemeral=True)
 
     # Note: slowmode command already exists in modcog.py, so not implementing here to avoid conflicts
 

@@ -120,7 +120,7 @@ class Warnings(commands.Cog):
         Prefix command: ?warn @user reason
         """
         if not self._check_permit(ctx, "warn_members") and not self._check_permit(ctx, "kick_members"):
-            return await ctx.send("You do not have permission to warn members.")
+            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to use this command. Ask an admin to grant you the required permission.")
 
         if reason is None:
             reason = DEFAULT_REASON
@@ -180,7 +180,7 @@ class Warnings(commands.Cog):
         Prefix command: ?unwarn 123 reason
         """
         if not self._check_permit(ctx, "warn_members") and not self._check_permit(ctx, "kick_members"):
-            return await ctx.send("You do not have permission to manage warnings.")
+            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to manage warnings. Ask an admin to grant you the required permission.")
 
         if reason is None:
             reason = "Warning removed by moderator."
@@ -343,7 +343,7 @@ class Warnings(commands.Cog):
     ):
         """Modify a warning by revoking it."""
         if not self._check_permit(ctx, "warn_members") and not self._check_permit(ctx, "kick_members"):
-            return await ctx.send("You do not have permission to manage warnings.")
+            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to manage warnings. Ask an admin to grant you the required permission.")
 
         if reason is None:
             reason = "Warning revoked by moderator."
@@ -392,7 +392,7 @@ class Warnings(commands.Cog):
     ):
         """Clear all warnings for a user (admin only)."""
         if not self._check_permit(ctx, "administrator"):
-            return await ctx.send("You need administrator permission to clear all warnings.")
+            return await ctx.send("Only administrators can clear all warnings for a user. This action cannot be undone.")
 
         if reason is None:
             reason = "All warnings cleared."

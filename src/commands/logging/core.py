@@ -336,7 +336,7 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
     ):
         """Set up or view the manual log channel configuration for this server."""
         if not ctx.guild:
-            await ctx.send(embed=create_error_embed("Error", "This command can only be used in servers."), ephemeral=True)
+            await ctx.send(embed=create_error_embed("Server Only", "This command can only be used in a server, not in DMs."), ephemeral=True)
             return
 
         log_type = log_type.lower().strip()
@@ -439,7 +439,7 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
     async def setlogchannels_disable(self, ctx: commands.Context, log_type: str):
         """Clear the manual log channel for a category (falls back to defaults)."""
         if not ctx.guild:
-            await ctx.send(embed=create_error_embed("Error", "This command can only be used in servers."), ephemeral=True)
+            await ctx.send(embed=create_error_embed("Server Only", "This command can only be used in a server, not in DMs."), ephemeral=True)
             return
 
         log_type = log_type.lower().strip()

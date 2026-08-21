@@ -67,7 +67,7 @@ def authorized_servers_only():
         async def wrapper(interaction, *args, **kwargs):
             if interaction.guild and interaction.guild.id not in AUTHORIZED_SERVERS:
                 embed = discord.Embed(
-                    title="🚫 Unauthorized Server",
+                    title="Unauthorized Server",
                     description="This bot can only be used in authorized servers.",
                     color=discord.Color.red()
                 )
@@ -265,7 +265,7 @@ async def on_ready():
             # Try to send a message to the owner if possible
             if guild.owner:
                 embed = discord.Embed(
-                    title="🚫 Unauthorized Server Access",
+                    title="Unauthorized Server Access",
                     description=f"This bot is exclusive to specific servers and cannot be used here.\n\n"
                                f"Server: {guild.name}\n"
                                f"Server ID: {guild.id}\n\n"
@@ -317,7 +317,7 @@ async def on_guild_join(guild):
         try:
             if guild.owner:
                 embed = discord.Embed(
-                    title="🚫 Unauthorized Server Access",
+                    title="Unauthorized Server Access",
                     description=f"This bot is exclusive to specific servers and cannot be used here.\n\n"
                                f"Server: {guild.name}\n"
                                f"Server ID: {guild.id}\n\n"

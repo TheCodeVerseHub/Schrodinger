@@ -131,16 +131,16 @@ class ModCog(commands.Cog):
     async def purge(self, ctx: commands.Context, amount: int):
         """Delete messages (prefix: ?purge, slash: /purge). Works in channels and threads!"""
         if not self._check_permit(ctx, "manage_messages"):
-            return await self._safe_reply(ctx, "You do not have permission to purge messages.")
+            return await self._safe_reply(ctx, "You need the 'Manage Messages' permission or a matching permit to use this command.")
         if amount < 1 or amount > 100:
-            return await self._safe_reply(ctx, "Please provide a number between 1 and 100.")
+            return await self._safe_reply(ctx, "The amount must be a number between 1 and 100.")
 
         if ctx.channel is None:
-            return await self._safe_reply(ctx, "❌ This command must be used in a server channel.")
+            return await self._safe_reply(ctx, "This command can only be used in a server channel, not in DMs.")
 
         # Allow text channels, threads, and voice/stage channel text chats (when supported by the API/library).
         if not isinstance(ctx.channel, discord.abc.Messageable):
-            return await self._safe_reply(ctx, "❌ This channel doesn't support messages, so I can't purge here.")
+            return await self._safe_reply(ctx, "This channel type doesn't support message purging. Use a text channel or thread instead.")
         
         if ctx.interaction and not ctx.interaction.response.is_done():
             try:
@@ -212,24 +212,24 @@ class ModCog(commands.Cog):
                 )
                 await msg.delete(delay=5)
         except discord.Forbidden:
-            await self._safe_reply(ctx, "❌ I lack permission to manage messages here.")
+            await self._safe_reply(ctx, "I'm missing the 'Manage Messages' permission in this channel. Ask an admin to grant me that permission.")
         except Exception as e:
-            await self._safe_reply(ctx, f"❌ Failed to purge messages: {e}")
+            await self._safe_reply(ctx, f"Failed to purge messages: {e}")
 
     @commands.hybrid_command(name="kick", description="Kick a member from the server.")
     @commands.bot_has_permissions(kick_members=True)
     @commands.guild_only()
     async def kick(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
         if not self._check_permit(ctx, "kick_members"):
-            return await self._safe_reply(ctx, "You do not have permission to kick members.")
+            return await self._safe_reply(ctx, "You need the 'Kick Members' permission or a matching permit to use this command.")
 
         if ctx.guild is None:
-            return await self._safe_reply(ctx, "This command can only be used in a server.")
+            return await self._safe_reply(ctx, "This command can only be used in a server, not in DMs.")
         if member == ctx.author:
-            return await self._safe_reply(ctx, "You cannot kick yourself!")
+            return await self._safe_reply(ctx, "You cannot kick yourself. Use this command on another member.")
         if isinstance(member, discord.Member) and isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await self._safe_reply(ctx, "Target has an equal or higher role.")
+                return await self._safe_reply(ctx, "Cannot complete this action. Their highest role is equal to or above yours. Only the server owner can act on members with higher roles.")
         try:
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, reason, "KICK")
             await member.kick(reason=reason)
@@ -244,25 +244,25 @@ class ModCog(commands.Cog):
 
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "KICK")
-            await self._safe_reply(ctx, "I don't have permission to kick that member.")
+            await self._safe_reply(ctx, "I'm missing the 'Kick Members' permission in this server. Ask an admin to grant me that permission in Server Settings > Roles.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "KICK")
-            await self._safe_reply(ctx, f"Error: {e}")
+            await self._safe_reply(ctx, f"An unexpected error occurred: {e}")
 
     @commands.hybrid_command(name="ban", description="Ban a member from the server.")
     @commands.bot_has_permissions(ban_members=True)
     @commands.guild_only()
     async def ban(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
         if not self._check_permit(ctx, "ban_members"):
-            return await self._safe_reply(ctx, "You do not have permission to ban members.")
+            return await self._safe_reply(ctx, "You need the 'Ban Members' permission or a matching permit to use this command.")
 
         if ctx.guild is None:
-            return await self._safe_reply(ctx, "This command can only be used in a server.")
+            return await self._safe_reply(ctx, "This command can only be used in a server, not in DMs.")
         if member == ctx.author:
-            return await self._safe_reply(ctx, "You cannot ban yourself!")
+            return await self._safe_reply(ctx, "You cannot ban yourself. Use this command on another member.")
         if isinstance(member, discord.Member) and isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await self._safe_reply(ctx, "Target has an equal or higher role.")
+                return await self._safe_reply(ctx, "Cannot complete this action. Their highest role is equal to or above yours. Only the server owner can act on members with higher roles.")
         try:
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, reason, "BAN")
             await member.ban(reason=reason)
@@ -276,27 +276,27 @@ class ModCog(commands.Cog):
 
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
-            await self._safe_reply(ctx, "I don't have permission to ban that member.")
+            await self._safe_reply(ctx, "I'm missing the 'Ban Members' permission in this server. Ask an admin to grant me that permission in Server Settings > Roles.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
-            await self._safe_reply(ctx, f"Error: {e}")
+            await self._safe_reply(ctx, f"An unexpected error occurred: {e}")
 
     @commands.hybrid_command(name="unban", description="Unban a previously banned user (use their ID).")
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx: commands.Context, user_id: int):
         if not self._check_permit(ctx, "ban_members"):
-            return await self._safe_reply(ctx, "You do not have permission to unban members.")
+            return await self._safe_reply(ctx, "You need the 'Ban Members' permission or a matching permit to unban users.")
         if ctx.guild is None:
-            return await self._safe_reply(ctx, "This command can only be used in a server.")
+            return await self._safe_reply(ctx, "This command can only be used in a server, not in DMs.")
         try:
             user = await self.bot.fetch_user(user_id)
         except discord.NotFound:
-            return await self._safe_reply(ctx, "User not found.")
+            return await self._safe_reply(ctx, "No user found with that ID. Make sure you are using the correct numeric user ID.")
 
         try:
             await ctx.guild.fetch_ban(user)
         except discord.NotFound:
-            return await self._safe_reply(ctx, "That user is not banned.")
+            return await self._safe_reply(ctx, "That user is not currently banned from this server.")
 
         try:
             unban_reason = f"Unbanned by {ctx.author}"
@@ -310,10 +310,10 @@ class ModCog(commands.Cog):
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
-            await self._safe_reply(ctx, "I don't have permission to unban that user.")
+            await self._safe_reply(ctx, "I'm missing the 'Ban Members' permission in this server. Ask an admin to grant me that permission.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
-            await self._safe_reply(ctx, f"Error: {e}")
+            await self._safe_reply(ctx, f"An unexpected error occurred: {e}")
 
     # -------- Advanced Moderation Commands --------
     
@@ -324,14 +324,14 @@ class ModCog(commands.Cog):
     async def softban(self, ctx: commands.Context, user: discord.Member, *, reason: str = "No reason provided"):
         """Ban and immediately unban a user to delete their recent messages"""
         if not self._check_permit(ctx, "ban_members"):
-            return await self._safe_reply(ctx, "You do not have permission to softban members.")
+            return await self._safe_reply(ctx, "You need the 'Ban Members' permission or a matching permit to use this command.")
         if ctx.guild is None:
-            return await self._safe_reply(ctx, "This command can only be used in a server.")
+            return await self._safe_reply(ctx, "This command can only be used in a server, not in DMs.")
         if user == ctx.author:
-            return await self._safe_reply(ctx, "You cannot softban yourself.")
+            return await self._safe_reply(ctx, "You cannot softban yourself. Use this command on another member.")
         if isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if user.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await self._safe_reply(ctx, "You can't softban someone with an equal or higher role.")
+                return await self._safe_reply(ctx, "Cannot softban this member. Their highest role is equal to or above yours. Only the server owner can softban members with higher roles.")
         try:
             ban_reason = f"[SOFTBAN] {reason}"
             unban_reason = f"Softban by {ctx.author}"
@@ -350,7 +350,7 @@ class ModCog(commands.Cog):
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "BAN")
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
-            await self._safe_reply(ctx, "I don't have permission to softban that user.")
+            await self._safe_reply(ctx, "I'm missing the 'Ban Members' permission in this server. Ask an admin to grant me that permission.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "BAN")
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
@@ -363,11 +363,11 @@ class ModCog(commands.Cog):
     async def clean(self, ctx: commands.Context, count: int = 100):
         """Delete bot messages and command invocations from the channel"""
         if not self._check_permit(ctx, "manage_messages"):
-            return await self._safe_reply(ctx, "You do not have permission to clean messages.")
+            return await self._safe_reply(ctx, "You need the 'Manage Messages' permission or a matching permit to use this command.")
         if count < 1 or count > 1000:
-            return await self._safe_reply(ctx, "Count must be between 1 and 1000.")
+            return await self._safe_reply(ctx, "The count must be a number between 1 and 1000.")
         if not isinstance(ctx.channel, discord.TextChannel):
-            return await self._safe_reply(ctx, "This command can only be used in text channels.")
+            return await self._safe_reply(ctx, "This command can only be used in text channels, not in voice channels or DMs.")
 
         def is_bot_message(msg):
             return msg.author.bot or msg.content.startswith(('/', '!', '?'))
@@ -383,7 +383,7 @@ class ModCog(commands.Cog):
             if msg:
                 await msg.delete(delay=5)
         except discord.Forbidden:
-            await self._safe_reply(ctx, "I don't have permission to delete messages.")
+            await self._safe_reply(ctx, "I'm missing the 'Manage Messages' permission in this channel. Ask an admin to grant me that permission.")
         except Exception as e:
             await self._safe_reply(ctx, f"Failed to clean messages: {e}")
 
@@ -420,11 +420,11 @@ class ModCog(commands.Cog):
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_ADD")
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_REMOVE")
-            await ctx.send("❌ I don't have permission to modify that role.")
+            await ctx.send("I'm missing the 'Manage Roles' permission. Ask an admin to grant me that permission in Server Settings > Roles.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_ADD")
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_REMOVE")
-            await ctx.send(f"❌ Failed to toggle role: {str(e)}")
+            await ctx.send(f"Failed to toggle role: {e}")
 
     @commands.hybrid_command(name="addmod", help="Add the moderator role to a user")
     @app_commands.describe(user="Member to promote to moderator")
@@ -433,17 +433,17 @@ class ModCog(commands.Cog):
     async def addmod(self, ctx: commands.Context, user: discord.Member):
         """Promote a user to moderator"""
         if ctx.guild is None:
-             return await ctx.send("This command can only be used in a server.")
+             return await ctx.send("This command can only be used in a server, not in DMs.")
 
         MOD_ROLE_ID = MODERATION_ROLE_ID
         role = ctx.guild.get_role(MOD_ROLE_ID)
         
         if not role:
-            await ctx.send(f"❌ Moderator role (ID: {MOD_ROLE_ID}) not found in this server.")
+            await ctx.send(f"The moderator role (ID: {MOD_ROLE_ID}) does not exist in this server. Ask an admin to create it or update the MODERATION_ROLE_ID in the bot config.")
             return
             
         if role in user.roles:
-            await ctx.send(f"⚠️ {user.mention} is already a moderator.")
+            await ctx.send(f"{user.mention} already has the moderator role.")
             return
             
         try:
@@ -461,10 +461,10 @@ class ModCog(commands.Cog):
             await ctx.send(embed=embed)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_ADD")
-            await ctx.send("❌ I don't have permission to assign the moderator role.")
+            await ctx.send("I'm missing the 'Manage Roles' permission. Ask an admin to grant me that permission.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_ADD")
-            await ctx.send(f"❌ Failed to promote user: {str(e)}")
+            await ctx.send(f"Failed to promote user: {e}")
 
     @commands.hybrid_command(name="timeout", aliases=["mute"], help="Timeout a member for a specified duration")
     @app_commands.describe(
@@ -477,18 +477,18 @@ class ModCog(commands.Cog):
     async def timeout(self, ctx: commands.Context, member: discord.Member, duration: str, *, reason: str = "No reason provided"):
         """Timeout a member for a specified duration"""
         if not self._check_permit(ctx, "moderate_members"):
-            return await self._safe_reply(ctx, "You do not have permission to timeout members.")
+            return await self._safe_reply(ctx, "You need the 'Moderate Members' permission or a matching permit to use this command.")
         if member == ctx.author:
-            return await self._safe_reply(ctx, "You cannot timeout yourself!")
+            return await self._safe_reply(ctx, "You cannot timeout yourself. Use this command on another member.")
         if isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await self._safe_reply(ctx, "Target has an equal or higher role.")
+                return await self._safe_reply(ctx, "Cannot complete this action. Their highest role is equal to or above yours. Only the server owner can act on members with higher roles.")
 
         # Parse duration
         time_regex = re.compile(r"(\d+)([smhd])")
         matches = time_regex.findall(duration.lower())
         if not matches:
-            return await self._safe_reply(ctx, "Invalid duration format. Use: 10m, 2h, 1d, etc.")
+            return await self._safe_reply(ctx, "Invalid duration format. Use a number followed by s (seconds), m (minutes), h (hours), or d (days). Examples: 30m, 2h, 1d, 12h30m.")
 
         total_seconds = 0
         for value, unit in matches:
@@ -499,9 +499,9 @@ class ModCog(commands.Cog):
             elif unit == 'd': total_seconds += value * 86400
 
         if total_seconds < 60:
-            return await self._safe_reply(ctx, "Timeout duration must be at least 1 minute.")
+            return await self._safe_reply(ctx, "Discord requires timeouts to be at least 1 minute long.")
         if total_seconds > 2419200:
-            return await self._safe_reply(ctx, "Timeout duration cannot exceed 28 days.")
+            return await self._safe_reply(ctx, "Discord limits timeouts to a maximum of 28 days.")
 
         try:
             timeout_until = datetime.now(timezone.utc) + timedelta(seconds=total_seconds)
@@ -523,7 +523,7 @@ class ModCog(commands.Cog):
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_APPLIED")
-            await self._safe_reply(ctx, "I don't have permission to timeout that member.")
+            await self._safe_reply(ctx, "I'm missing the 'Moderate Members' permission in this server. Ask an admin to grant me that permission.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_APPLIED")
             await self._safe_reply(ctx, f"Failed to timeout: {e}")
@@ -535,7 +535,7 @@ class ModCog(commands.Cog):
     async def untimeout(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
         """Remove timeout from a member"""
         if not self._check_permit(ctx, "moderate_members"):
-            return await self._safe_reply(ctx, "You do not have permission to remove timeouts.")
+            return await self._safe_reply(ctx, "You need the 'Moderate Members' permission or a matching permit to remove timeouts.")
         if not member.timed_out_until:
             return await self._safe_reply(ctx, f"{member.mention} is not timed out.")
 
@@ -552,7 +552,7 @@ class ModCog(commands.Cog):
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_REMOVED")
-            await self._safe_reply(ctx, "I don't have permission to remove timeout from that member.")
+            await self._safe_reply(ctx, "I'm missing the 'Moderate Members' permission in this server. Ask an admin to grant me that permission.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_REMOVED")
             await self._safe_reply(ctx, f"Failed to remove timeout: {e}")
@@ -564,7 +564,7 @@ class ModCog(commands.Cog):
     async def slowmode(self, ctx: commands.Context, seconds: Optional[int] = None):
         """View or set slowmode delay for the current channel"""
         if not self._check_permit(ctx, "manage_channels"):
-            return await self._safe_reply(ctx, "You do not have permission to change slowmode.")
+            return await self._safe_reply(ctx, "You need the 'Manage Channels' permission or a matching permit to change slowmode.")
         if not isinstance(ctx.channel, (discord.TextChannel, discord.Thread)):
             return await self._safe_reply(ctx, "This command can only be used in text channels or threads.")
 
@@ -577,7 +577,7 @@ class ModCog(commands.Cog):
             return await self._safe_reply(ctx, view=view)
 
         if seconds < 0 or seconds > 21600:
-            return await self._safe_reply(ctx, "Slowmode delay must be between 0 and 21600 seconds (6 hours).")
+            return await self._safe_reply(ctx, "The delay must be between 0 (disable) and 21600 seconds (6 hours).")
 
         try:
             await ctx.channel.edit(slowmode_delay=seconds, reason=f"Slowmode set by {ctx.author}")
@@ -595,7 +595,7 @@ class ModCog(commands.Cog):
                 )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
-            await self._safe_reply(ctx, "I don't have permission to modify this channel.")
+            await self._safe_reply(ctx, "I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.")
         except Exception as e:
             await self._safe_reply(ctx, f"Failed to set slowmode: {e}")
 
@@ -606,7 +606,7 @@ class ModCog(commands.Cog):
     async def lock(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
         """Lock a channel or thread to prevent members from sending messages"""
         if not self._check_permit(ctx, "manage_channels"):
-            return await self._safe_reply(ctx, "You do not have permission to lock channels.")
+            return await self._safe_reply(ctx, "You need the 'Manage Channels' permission or a matching permit to lock channels.")
 
         # Handle threads
         if isinstance(ctx.channel, discord.Thread):
@@ -624,7 +624,7 @@ class ModCog(commands.Cog):
                 )
                 await self._safe_reply(ctx, view=view)
             except discord.Forbidden:
-                await self._safe_reply(ctx, "I don't have permission to modify this thread.")
+                await self._safe_reply(ctx, "I'm missing the 'Manage Threads' permission. Ask an admin to grant me that permission.")
             except Exception as e:
                 await self._safe_reply(ctx, f"Failed to lock thread: {e}")
             return
@@ -647,7 +647,7 @@ class ModCog(commands.Cog):
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
-            await self._safe_reply(ctx, "I don't have permission to modify this channel.")
+            await self._safe_reply(ctx, "I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.")
         except Exception as e:
             await self._safe_reply(ctx, f"Failed to lock channel: {e}")
 
@@ -658,7 +658,7 @@ class ModCog(commands.Cog):
     async def unlock(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
         """Unlock a channel or thread to allow members to send messages"""
         if not self._check_permit(ctx, "manage_channels"):
-            return await self._safe_reply(ctx, "You do not have permission to unlock channels.")
+            return await self._safe_reply(ctx, "You need the 'Manage Channels' permission or a matching permit to unlock channels.")
 
         # Handle threads
         if isinstance(ctx.channel, discord.Thread):
@@ -676,7 +676,7 @@ class ModCog(commands.Cog):
                 )
                 await self._safe_reply(ctx, view=view)
             except discord.Forbidden:
-                await self._safe_reply(ctx, "I don't have permission to modify this thread.")
+                await self._safe_reply(ctx, "I'm missing the 'Manage Threads' permission. Ask an admin to grant me that permission.")
             except Exception as e:
                 await self._safe_reply(ctx, f"Failed to unlock thread: {e}")
             return
@@ -699,7 +699,7 @@ class ModCog(commands.Cog):
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
-            await self._safe_reply(ctx, "I don't have permission to modify this channel.")
+            await self._safe_reply(ctx, "I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.")
         except Exception as e:
             await self._safe_reply(ctx, f"Failed to unlock channel: {e}")
 
@@ -711,7 +711,7 @@ class ModCog(commands.Cog):
         """Lock all channels in the server"""
         assert ctx.guild is not None
         
-        await ctx.send("🔒 Initiating server lockdown...")
+        await ctx.send("Initiating server lockdown...")
         
         locked_count = 0
         failed_count = 0
@@ -727,13 +727,13 @@ class ModCog(commands.Cog):
                 failed_count += 1
         
         embed = discord.Embed(
-            title="🔒 Server Lockdown Complete",
+            title="Server Lockdown Complete",
             description=f"Successfully locked **{locked_count}** channels.",
             color=discord.Color.red()
         )
         
         if failed_count > 0:
-            embed.add_field(name="⚠️ Failed", value=f"{failed_count} channels could not be locked.", inline=False)
+            embed.add_field(name="Failed", value=f"{failed_count} channels could not be locked.", inline=False)
         
         embed.set_footer(text=f"Lockdown initiated by {ctx.author}")
         await ctx.send(embed=embed)
@@ -747,9 +747,9 @@ class ModCog(commands.Cog):
         assert ctx.guild is not None
         
         if not self.lockdown_channels:
-            return await ctx.send("❌ No channels are currently locked down.")
+            return await ctx.send("No channels are currently locked down. Use ?lockdown to lock all channels first.")
         
-        await ctx.send("🔓 Removing server lockdown...")
+        await ctx.send("Removing server lockdown...")
         
         unlocked_count = 0
         failed_count = 0
@@ -767,13 +767,13 @@ class ModCog(commands.Cog):
                     failed_count += 1
         
         embed = discord.Embed(
-            title="🔓 Server Lockdown Removed",
+            title="Server Lockdown Removed",
             description=f"Successfully unlocked **{unlocked_count}** channels.",
             color=discord.Color.green()
         )
         
         if failed_count > 0:
-            embed.add_field(name="⚠️ Failed", value=f"{failed_count} channels could not be unlocked.", inline=False)
+            embed.add_field(name="Failed", value=f"{failed_count} channels could not be unlocked.", inline=False)
         
         embed.set_footer(text=f"Lockdown removed by {ctx.author}")
         await ctx.send(embed=embed)
@@ -786,17 +786,17 @@ class ModCog(commands.Cog):
         """Nuke a channel by cloning and deleting it (Owner only)"""
         # Check if user is the bot owner
         if ctx.author.id != BOT_OWNER_ID:
-            return await ctx.send("❌ This command can only be used by the bot owner.")
+            return await ctx.send("This command is restricted to the bot owner only.")
         
         # Ensure channel is a TextChannel: prefer provided channel, otherwise use ctx.channel if it's a TextChannel
         channel_to_nuke = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
         if channel_to_nuke is None:
-            return await ctx.send("❌ This command can only be used on text channels.")
+            return await ctx.send("This command can only be used on text channels.")
         
         try:
             # Create confirmation message
             embed = discord.Embed(
-                title="⚠️ Confirm Channel Nuke",
+                title="Confirm Channel Nuke",
                 description=f"Are you sure you want to nuke {channel_to_nuke.mention}?\n\n**This will:**\n• Delete all messages\n• Reset channel position\n• Preserve permissions and settings",
                 color=discord.Color.red()
             )
@@ -814,7 +814,7 @@ class ModCog(commands.Cog):
                 
                 if str(reaction.emoji) == "❌":
                     await confirm_msg.delete()
-                    return await ctx.send("❌ Channel nuke cancelled.")
+                    return await ctx.send("Channel nuke cancelled.")
                 
                 # Proceed with nuke
                 position = channel_to_nuke.position
@@ -834,12 +834,12 @@ class ModCog(commands.Cog):
                 
             except asyncio.TimeoutError:
                 await confirm_msg.delete()
-                await ctx.send("❌ Channel nuke timed out.")
+                await ctx.send("Confirmation timed out. Channel was not nuked.")
                 
         except discord.Forbidden:
-            await ctx.send("❌ I don't have permission to manage this channel.")
+            await ctx.send("I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.")
         except Exception as e:
-            await ctx.send(f"❌ Failed to nuke channel: {str(e)}")
+            await ctx.send(f"Failed to nuke channel: {e}")
 
     @commands.hybrid_command(name="massban", help="Ban multiple users by ID (OWNER ONLY)")
     @app_commands.describe(user_ids="User IDs to ban (space-separated)", reason="Reason for the bans")
@@ -849,7 +849,7 @@ class ModCog(commands.Cog):
         """Ban multiple users by their IDs (Owner only)"""
         # Check if user is the bot owner
         if ctx.author.id != BOT_OWNER_ID:
-            return await ctx.send("❌ This command can only be used by the bot owner.")
+            return await ctx.send("This command is restricted to the bot owner only.")
         
         assert ctx.guild is not None
         
@@ -857,12 +857,12 @@ class ModCog(commands.Cog):
         ids = [int(id.strip()) for id in user_ids.split() if id.strip().isdigit()]
         
         if not ids:
-            return await ctx.send("❌ No valid user IDs provided.")
+            return await ctx.send("No valid user IDs provided. Enter one or more numeric user IDs separated by spaces.")
         
         if len(ids) > 50:
-            return await ctx.send("❌ Cannot ban more than 50 users at once.")
+            return await ctx.send("Cannot ban more than 50 users at once. Split the list into smaller batches.")
         
-        await ctx.send(f"⚖️ Processing ban for {len(ids)} user(s)...")
+        await ctx.send(f"Processing ban for {len(ids)} user(s)...")
         
         banned = []
         failed = []
@@ -879,20 +879,20 @@ class ModCog(commands.Cog):
                 failed.append(f"{user_id}: {str(e)}")
         
         embed = discord.Embed(
-            title="🔨 Mass Ban Complete",
+            title="Mass Ban Complete",
             color=discord.Color.red()
         )
         
         if banned:
             embed.add_field(
-                name=f"✅ Banned ({len(banned)})",
+                name=f"Banned ({len(banned)})",
                 value="\n".join(banned[:10]) + (f"\n...and {len(banned) - 10} more" if len(banned) > 10 else ""),
                 inline=False
             )
         
         if failed:
             embed.add_field(
-                name=f"❌ Failed ({len(failed)})",
+                name=f"Failed ({len(failed)})",
                 value="\n".join(failed[:10]) + (f"\n...and {len(failed) - 10} more" if len(failed) > 10 else ""),
                 inline=False
             )
@@ -909,10 +909,10 @@ class ModCog(commands.Cog):
     async def nickname(self, ctx: commands.Context, member: discord.Member, *, nickname: Optional[str] = None):
         """Change a member's nickname"""
         if not self._check_permit(ctx, "manage_nicknames"):
-            return await self._safe_reply(ctx, "You do not have permission to change nicknames.")
+            return await self._safe_reply(ctx, "You need the 'Manage Nicknames' permission or a matching permit to change nicknames.")
         if isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await self._safe_reply(ctx, "Target has an equal or higher role.")
+                return await self._safe_reply(ctx, "Cannot complete this action. Their highest role is equal to or above yours. Only the server owner can act on members with higher roles.")
 
         old_nick = member.display_name
         new_nick = nickname or member.name
@@ -1082,7 +1082,7 @@ class ModCog(commands.Cog):
             properties.append("Booster Role")
         
         if properties:
-            embed.add_field(name="⚙️ Properties", value="\n".join(properties), inline=False)
+            embed.add_field(name="Properties", value="\n".join(properties), inline=False)
         
         # Key permissions
         key_perms = []
@@ -1183,7 +1183,7 @@ class ModCog(commands.Cog):
             owner_mention = owner.mention
             owner_display = str(owner)
         embed.add_field(
-            name="👑 Server Owner",
+            name="Server Owner",
             value=f"{owner_mention}\n{owner_display}",
             inline=True
         )
@@ -1231,14 +1231,14 @@ class ModCog(commands.Cog):
         
         if not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
-                "❌ You do not have permission to use this command.",
+                "You do not have permission to use this command.",
                 ephemeral=True
             )
             return
         
         if not any(role.id == admin_bypass_role_id for role in interaction.user.roles) and not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                "❌ You do not have permission to use this command.",
+                "You do not have permission to use this command.",
                 ephemeral=True
             )
             return
@@ -1249,7 +1249,7 @@ class ModCog(commands.Cog):
                 target_member = await interaction.guild.fetch_member(user.id)
             except discord.NotFound:
                 await interaction.response.send_message(
-                    f"❌ User {user.mention} is not a member of this server.",
+                    f"User {user.mention} is not a member of this server.",
                     ephemeral=True
                 )
                 return
@@ -1275,15 +1275,15 @@ class ModCog(commands.Cog):
     @unban.error
     async def _command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
-            await self._safe_reply(ctx, "You lack permission for that command.")
+            await self._safe_reply(ctx, "You lack the required permissions for this command. Contact an admin if you believe this is an error.")
         elif isinstance(error, commands.BotMissingPermissions):
-            await self._safe_reply(ctx, "I am missing required permissions.")
+            await self._safe_reply(ctx, "I am missing a permission required to run this command. Ask an admin to check my role permissions in Server Settings > Roles.")
         elif isinstance(error, commands.BadArgument):
-            await self._safe_reply(ctx, "Invalid argument provided.")
+            await self._safe_reply(ctx, "Invalid argument. Check the command usage with ?help for the correct format.")
         elif isinstance(error, commands.CommandInvokeError) and "Unknown interaction" in str(error):
             print(f"[ModCog] Interaction expired for {ctx.command}: {error}")
         else:
-            await self._safe_reply(ctx, f"An error occurred: {error}")
+            await self._safe_reply(ctx, f"Something went wrong: {error}. If this keeps happening, contact an admin.")
 
 
 class VerificationView(discord.ui.View):

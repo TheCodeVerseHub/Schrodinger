@@ -540,7 +540,7 @@ class EmbedBuilder(commands.Cog):
                         try:
                             target = await commands.MemberConverter().convert(ctx, target_str)
                         except commands.BadArgument:
-                            await ctx.send(f"❌ Could not find Role or Member named `{target_str}`.")
+                            await ctx.send(f"Could not find a role or member named `{target_str}`. Check the spelling or use a mention or ID instead.")
                             return
 
                 # Resolve Permission
@@ -612,7 +612,7 @@ class EmbedBuilder(commands.Cog):
                         # e.g. "ban" matches "ban_members"
                         perm_attr = matches[0]
                     else:
-                        await ctx.send(f"❌ Invalid permission `{perm_str}`.")
+                        await ctx.send(f"Invalid permission `{perm_str}`. Use ?ls perm to see available permission names.")
                         return
 
                 # Filter Channels
@@ -701,7 +701,7 @@ class EmbedBuilder(commands.Cog):
         # Extract channel mention or ID after ?v
         params = full_args.split("?v", 1)[1].strip()
         if not params:
-            await ctx.send("❌ Please provide a channel. Usage: `?ls channels ?v #channel-name`")
+            await ctx.send("Please provide a channel after ?v. Example: ?ls channels ?v #general")
             return
 
         channel_str = params.strip()
@@ -713,7 +713,7 @@ class EmbedBuilder(commands.Cog):
             channel = await commands.TextChannelConverter().convert(ctx, channel_str)
         except commands.BadArgument:
             await ctx.send(
-                f"❌ Could not find a text channel named `{channel_str}`."
+                f"Could not find a text channel named `{channel_str}`. Check the channel name or use a channel mention instead."
             )
             return
 
@@ -845,7 +845,7 @@ class EmbedBuilder(commands.Cog):
                         try:
                             target = await commands.MemberConverter().convert(ctx, target_str)
                         except commands.BadArgument:
-                            await ctx.send(f"❌ Could not find Role or Member named `{target_str}`.")
+                            await ctx.send(f"Could not find a role or member named `{target_str}`. Check the spelling or use a mention or ID instead.")
                             return
 
                 # Resolve Permission
@@ -902,7 +902,7 @@ class EmbedBuilder(commands.Cog):
                     if matches:
                         perm_attr = matches[0]
                     else:
-                        await ctx.send(f"❌ Invalid permission `{perm_str}`.")
+                        await ctx.send(f"Invalid permission `{perm_str}`. Use ?ls perm to see available permission names.")
                         return
 
                 # Filter Categories
