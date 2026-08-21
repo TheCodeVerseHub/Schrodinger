@@ -41,7 +41,7 @@ except ImportError:
 
 class ModCog(commands.Cog):
     """Comprehensive moderation commands for server management"""
-    
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.lockdown_channels = set()  # Store locked down channels
@@ -49,20 +49,91 @@ class ModCog(commands.Cog):
 
     # -------- Helpers --------
 
-    async def _safe_reply(self, ctx: commands.Context, content: str | None = None, *, embed: discord.Embed | None = None, ephemeral: bool = True):
+    async def _safe_reply(self, ctx: commands.Context, content: str | None = None, *,
+                          embed: discord.Embed | None = None, view: discord.ui.View | None = None,
+                          ephemeral: bool = True):
         """Unified reply for hybrid commands. Delegates to shared safe_send from helpers."""
-        return await safe_send(ctx, content=content, embed=embed, ephemeral=ephemeral)
+        return await safe_send(ctx, content=content, embed=embed, view=view, ephemeral=ephemeral)
+
+    # -- Permit helper -------------------------------------------------------
+
+    def _check_permit(self, ctx: commands.Context, permission: str) -> bool:
+        """Return True if the invoking user has native Discord perms *or* a
+        matching custom permit.  ``permission`` is the canonical Discord
+        permission name (e.g. ``"kick_members"``).
+        """
+        # Native permission check
+        guild_perms = getattr(ctx.author, "guild_permissions", None)
+        if guild_perms and getattr(guild_perms, permission, False):
+            return True
+        # Custom permit check
+        permits_cog: Any = self.bot.get_cog("PermitSystem")
+        if permits_cog and hasattr(permits_cog, "check_permit") and ctx.guild:
+            return permits_cog.check_permit(ctx.author.id, ctx.guild.id, permission)
+        return False
+
+    # -- Components V2 moderation card builder -------------------------------
+
+    # Accent colours keyed by action family.
+    _CARD_COLORS: dict[str, int] = {
+        "ban":    0xED4245,   # red
+        "unban":  0x57F287,   # green
+        "kick":   0xFEE75C,   # yellow/gold
+        "timeout":0xFEE75C,
+        "untimeout": 0x57F287,
+        "warn":   0xFEE75C,
+        "success":0x57F287,
+        "info":   0x5865F2,   # blurple
+        "error":  0xED4245,
+    }
+
+    @staticmethod
+    def _mod_action_card(
+        title: str,
+        color_key: str,
+        *,
+        user: discord.Member | discord.User | None = None,
+        description: str = "",
+        fields: dict[str, str] | None = None,
+        footer: str = "",
+    ) -> discord.ui.LayoutView:
+        """Build a compact Components V2 container for a mod-action confirmation.
+
+        Returns a LayoutView ready to be sent via ``view=``.
+        """
+        color_val = ModCog._CARD_COLORS.get(color_key, 0x5865F2)
+        accent = discord.Color(color_val)
+
+        container = discord.ui.Container(accent_color=accent)
+        container.add_item(discord.ui.TextDisplay(f"## {title}"))
+        container.add_item(discord.ui.Separator())
+
+        if description:
+            container.add_item(discord.ui.TextDisplay(description))
+
+        if fields:
+            field_lines = [f"**{k}:** {v}" for k, v in fields.items()]
+            container.add_item(discord.ui.TextDisplay("\n".join(field_lines)))
+
+        if footer:
+            container.add_item(discord.ui.Separator())
+            container.add_item(discord.ui.TextDisplay(f"*{footer}*"))
+
+        view = discord.ui.LayoutView(timeout=None)
+        view.add_item(container)
+        return view
 
     # -------- Basic Moderation Commands --------
     
     @commands.hybrid_command(name="purge", description="Delete a number of messages from the current channel or thread.")
-    @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True)
     @commands.guild_only()
     async def purge(self, ctx: commands.Context, amount: int):
         """Delete messages (prefix: ?purge, slash: /purge). Works in channels and threads!"""
+        if not self._check_permit(ctx, "manage_messages"):
+            return await self._safe_reply(ctx, "You do not have permission to purge messages.")
         if amount < 1 or amount > 100:
-            return await self._safe_reply(ctx, "❌ Please provide a number between 1 and 100.")
+            return await self._safe_reply(ctx, "Please provide a number between 1 and 100.")
 
         if ctx.channel is None:
             return await self._safe_reply(ctx, "❌ This command must be used in a server channel.")
@@ -134,9 +205,11 @@ class ModCog(commands.Cog):
             # For slash commands (interactions), ephemeral already auto-hides
             # For prefix commands, send regular message and delete after 5s
             if ctx.interaction:
-                await self._safe_reply(ctx, f"🧹 Deleted {count} messages.\n-# This message will auto-dismiss")
+                await self._safe_reply(ctx, f"Deleted {count} messages.")
             else:
-                msg = await ctx.send(f"🧹 Deleted {count} messages.\n-# Note: This message will be deleted in 5 seconds")
+                msg = await ctx.send(
+                    f"Deleted {count} messages.\n-# This message will be deleted in 5 seconds"
+                )
                 await msg.delete(delay=5)
         except discord.Forbidden:
             await self._safe_reply(ctx, "❌ I lack permission to manage messages here.")
@@ -147,180 +220,172 @@ class ModCog(commands.Cog):
     @commands.bot_has_permissions(kick_members=True)
     @commands.guild_only()
     async def kick(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
-        # PERM CHECK: Native Kick OR Permit
-        has_native = ctx.author.guild_permissions.kick_members if isinstance(ctx.author, discord.Member) else False
-        permits_cog: Any = self.bot.get_cog("PermitSystem")
-        has_permit = False
-        if permits_cog and hasattr(permits_cog, 'check_permit') and ctx.guild:
-            has_permit = permits_cog.check_permit(ctx.author.id, ctx.guild.id, "kick_members")
-        
-        if not (has_native or has_permit):
-             return await self._safe_reply(ctx, "❌ You do not have permission to kick members (Need native perms or 'kick_members' permit).")
+        if not self._check_permit(ctx, "kick_members"):
+            return await self._safe_reply(ctx, "You do not have permission to kick members.")
 
         if ctx.guild is None:
-            return await self._safe_reply(ctx, "❌ This command can only be used in a server.")
+            return await self._safe_reply(ctx, "This command can only be used in a server.")
         if member == ctx.author:
-            return await self._safe_reply(ctx, "❌ You cannot kick yourself!")
+            return await self._safe_reply(ctx, "You cannot kick yourself!")
         if isinstance(member, discord.Member) and isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await self._safe_reply(ctx, "❌ Target has an equal or higher role.")
+                return await self._safe_reply(ctx, "Target has an equal or higher role.")
         try:
-            # Register the actual invoker so the logging system attributes the
-            # kick to the moderator instead of the bot (Discord audit logs show
-            # the bot application for API-performed actions).
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, reason, "KICK")
             await member.kick(reason=reason)
-            await self._safe_reply(ctx, f"👢 Kicked {member.mention} | Reason: {reason}")
+            view = self._mod_action_card(
+                "Member Kicked", "kick",
+                user=member,
+                description=f"**{member}** was kicked from the server.",
+                fields={"User": member.mention, "Reason": reason, "Moderator": ctx.author.mention},
+                footer=f"User ID: {member.id}",
+            )
+            await self._safe_reply(ctx, view=view)
 
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "KICK")
-            await self._safe_reply(ctx, "❌ I don't have permission to kick that member.")
+            await self._safe_reply(ctx, "I don't have permission to kick that member.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "KICK")
-            await self._safe_reply(ctx, f"❌ Error: {e}")
+            await self._safe_reply(ctx, f"Error: {e}")
 
     @commands.hybrid_command(name="ban", description="Ban a member from the server.")
     @commands.bot_has_permissions(ban_members=True)
     @commands.guild_only()
     async def ban(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
-        # PERM CHECK: Native Ban OR Permit
-        has_native = ctx.author.guild_permissions.ban_members if isinstance(ctx.author, discord.Member) else False
-        permits_cog: Any = self.bot.get_cog("PermitSystem")
-        has_permit = False
-        if permits_cog and hasattr(permits_cog, 'check_permit') and ctx.guild:
-            has_permit = permits_cog.check_permit(ctx.author.id, ctx.guild.id, "ban_members")
-        
-        if not (has_native or has_permit):
-             return await self._safe_reply(ctx, "❌ You do not have permission to ban members (Need native perms or 'ban_members' permit).")
+        if not self._check_permit(ctx, "ban_members"):
+            return await self._safe_reply(ctx, "You do not have permission to ban members.")
 
         if ctx.guild is None:
-            return await self._safe_reply(ctx, "❌ This command can only be used in a server.")
+            return await self._safe_reply(ctx, "This command can only be used in a server.")
         if member == ctx.author:
-            return await self._safe_reply(ctx, "❌ You cannot ban yourself!")
+            return await self._safe_reply(ctx, "You cannot ban yourself!")
         if isinstance(member, discord.Member) and isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await self._safe_reply(ctx, "❌ Target has an equal or higher role.")
+                return await self._safe_reply(ctx, "Target has an equal or higher role.")
         try:
-            # Register the actual invoker so the logging system attributes the
-            # ban to the moderator instead of the bot (Discord audit logs show
-            # the bot application for API-performed bans).
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, reason, "BAN")
             await member.ban(reason=reason)
-            await self._safe_reply(ctx, f"🔨 Banned {member.mention} | Reason: {reason}")
+            view = self._mod_action_card(
+                "Member Banned", "ban",
+                user=member,
+                description=f"**{member}** has been banned from the server.",
+                fields={"User": member.mention, "User ID": f"`{member.id}`", "Reason": reason, "Moderator": ctx.author.mention},
+            )
+            await self._safe_reply(ctx, view=view)
 
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
-            await self._safe_reply(ctx, "❌ I don't have permission to ban that member.")
+            await self._safe_reply(ctx, "I don't have permission to ban that member.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
-            await self._safe_reply(ctx, f"❌ Error: {e}")
+            await self._safe_reply(ctx, f"Error: {e}")
 
     @commands.hybrid_command(name="unban", description="Unban a previously banned user (use their ID).")
-    @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx: commands.Context, user_id: int):
+        if not self._check_permit(ctx, "ban_members"):
+            return await self._safe_reply(ctx, "You do not have permission to unban members.")
         if ctx.guild is None:
-            return await self._safe_reply(ctx, "❌ This command can only be used in a server.")
+            return await self._safe_reply(ctx, "This command can only be used in a server.")
         try:
             user = await self.bot.fetch_user(user_id)
         except discord.NotFound:
-            return await self._safe_reply(ctx, "❌ User not found.")
+            return await self._safe_reply(ctx, "User not found.")
 
         try:
-            # discord.py 2.x: guild.fetch_ban for a single user
             await ctx.guild.fetch_ban(user)
         except discord.NotFound:
-            return await self._safe_reply(ctx, "❌ That user is not banned.")
+            return await self._safe_reply(ctx, "That user is not banned.")
 
         try:
             unban_reason = f"Unbanned by {ctx.author}"
             register_mod_action(self.bot, ctx.guild.id, user.id, ctx.author.id, unban_reason, "UNBAN")
             await ctx.guild.unban(user, reason=unban_reason)
-            await self._safe_reply(ctx, f"✅ Unbanned {user.mention}")
+            view = self._mod_action_card(
+                "Member Unbanned", "unban",
+                description=f"**{user}** has been unbanned.",
+                fields={"User": user.mention, "User ID": f"`{user.id}`", "Moderator": ctx.author.mention},
+            )
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
-            await self._safe_reply(ctx, "❌ I don't have permission to unban that user.")
+            await self._safe_reply(ctx, "I don't have permission to unban that user.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
-            await self._safe_reply(ctx, f"❌ Error: {e}")
+            await self._safe_reply(ctx, f"Error: {e}")
 
     # -------- Advanced Moderation Commands --------
     
     @commands.hybrid_command(name="softban", help="Kick a user and delete their messages")
     @app_commands.describe(user="The user to softban", reason="Reason for the softban")
-    @commands.has_permissions(ban_members=True)
+    @commands.bot_has_permissions(ban_members=True)
     @commands.guild_only()
     async def softban(self, ctx: commands.Context, user: discord.Member, *, reason: str = "No reason provided"):
         """Ban and immediately unban a user to delete their recent messages"""
+        if not self._check_permit(ctx, "ban_members"):
+            return await self._safe_reply(ctx, "You do not have permission to softban members.")
         if ctx.guild is None:
-            return await ctx.send("❌ This command can only be used in a server.")
-        
+            return await self._safe_reply(ctx, "This command can only be used in a server.")
         if user == ctx.author:
-            return await ctx.send("❌ You cannot softban yourself.")
-        
+            return await self._safe_reply(ctx, "You cannot softban yourself.")
         if isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if user.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await ctx.send("❌ You can't softban someone with an equal or higher role.")
-        
+                return await self._safe_reply(ctx, "You can't softban someone with an equal or higher role.")
         try:
-            # Ban then immediately unban
             ban_reason = f"[SOFTBAN] {reason}"
             unban_reason = f"Softban by {ctx.author}"
             register_mod_action(self.bot, ctx.guild.id, user.id, ctx.author.id, ban_reason, "BAN")
             await user.ban(reason=ban_reason, delete_message_days=1)
             register_mod_action(self.bot, ctx.guild.id, user.id, ctx.author.id, unban_reason, "UNBAN")
             await ctx.guild.unban(user, reason=unban_reason)
-            
-            # Log the action
-            embed = discord.Embed(
-                title="🪓 Softbanned",
-                description=f"{user.mention} has been softbanned (messages deleted, user can rejoin).",
-                color=discord.Color.orange()
+            view = self._mod_action_card(
+                "Member Softbanned", "kick",
+                user=user,
+                description=f"**{user}** was softbanned. Messages deleted, user can rejoin.",
+                fields={"User": user.mention, "Reason": reason, "Moderator": ctx.author.mention},
+                footer=f"User ID: {user.id}",
             )
-            embed.add_field(name="Reason", value=reason, inline=False)
-            embed.set_footer(text=f"Softbanned by {ctx.author}")
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "BAN")
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
-            await ctx.send("❌ I don't have permission to softban that user.")
+            await self._safe_reply(ctx, "I don't have permission to softban that user.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "BAN")
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
-            await ctx.send(f"❌ Failed to softban: {str(e)}")
+            await self._safe_reply(ctx, f"Failed to softban: {e}")
 
     @commands.hybrid_command(name="clean", help="Delete bot messages and command invocations")
     @app_commands.describe(count="Number of messages to check (default 100)")
-    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True)
     @commands.guild_only()
     async def clean(self, ctx: commands.Context, count: int = 100):
         """Delete bot messages and command invocations from the channel"""
+        if not self._check_permit(ctx, "manage_messages"):
+            return await self._safe_reply(ctx, "You do not have permission to clean messages.")
         if count < 1 or count > 1000:
-            return await ctx.send("❌ Count must be between 1 and 1000.")
-        
+            return await self._safe_reply(ctx, "Count must be between 1 and 1000.")
         if not isinstance(ctx.channel, discord.TextChannel):
-            return await ctx.send("❌ This command can only be used in text channels.")
-        
+            return await self._safe_reply(ctx, "This command can only be used in text channels.")
+
         def is_bot_message(msg):
             return msg.author.bot or msg.content.startswith(('/', '!', '?'))
-        
+
         try:
             deleted = await ctx.channel.purge(limit=count, check=is_bot_message)
-            
-            embed = discord.Embed(
-                title="🧹 Cleaned Messages",
-                description=f"Deleted {len(deleted)} bot/command messages from the last {count} messages.",
-                color=discord.Color.green()
+            view = self._mod_action_card(
+                "Messages Cleaned", "success",
+                description=f"Deleted **{len(deleted)}** bot/command messages from the last {count} messages.",
+                fields={"Moderator": ctx.author.mention},
             )
-            embed.set_footer(text=f"Cleaned by {ctx.author}")
-            
-            # Send confirmation and delete it after 5 seconds
-            msg = await ctx.send(embed=embed)
-            await msg.delete(delay=5)
+            msg = await self._safe_reply(ctx, view=view)
+            if msg:
+                await msg.delete(delay=5)
         except discord.Forbidden:
-            await ctx.send("❌ I don't have permission to delete messages.")
+            await self._safe_reply(ctx, "I don't have permission to delete messages.")
         except Exception as e:
-            await ctx.send(f"❌ Failed to clean messages: {str(e)}")
+            await self._safe_reply(ctx, f"Failed to clean messages: {e}")
 
     @commands.hybrid_command(name="role", help="Toggle a role for a user")
     @app_commands.describe(user="Member to toggle role for", role="The role to toggle")
@@ -407,270 +472,236 @@ class ModCog(commands.Cog):
         duration="Duration (e.g., 10m, 2h, 1d)",
         reason="Reason for the timeout"
     )
-    @commands.has_permissions(moderate_members=True)
     @commands.bot_has_permissions(moderate_members=True)
     @commands.guild_only()
     async def timeout(self, ctx: commands.Context, member: discord.Member, duration: str, *, reason: str = "No reason provided"):
         """Timeout a member for a specified duration"""
+        if not self._check_permit(ctx, "moderate_members"):
+            return await self._safe_reply(ctx, "You do not have permission to timeout members.")
         if member == ctx.author:
-            return await ctx.send("❌ You cannot timeout yourself!")
-        
+            return await self._safe_reply(ctx, "You cannot timeout yourself!")
         if isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await ctx.send("❌ Target has an equal or higher role.")
-        
+                return await self._safe_reply(ctx, "Target has an equal or higher role.")
+
         # Parse duration
         time_regex = re.compile(r"(\d+)([smhd])")
         matches = time_regex.findall(duration.lower())
-        
         if not matches:
-            return await ctx.send("❌ Invalid duration format. Use: 10m, 2h, 1d, etc.")
-        
+            return await self._safe_reply(ctx, "Invalid duration format. Use: 10m, 2h, 1d, etc.")
+
         total_seconds = 0
         for value, unit in matches:
             value = int(value)
-            if unit == 's':
-                total_seconds += value
-            elif unit == 'm':
-                total_seconds += value * 60
-            elif unit == 'h':
-                total_seconds += value * 3600
-            elif unit == 'd':
-                total_seconds += value * 86400
-        
+            if unit == 's': total_seconds += value
+            elif unit == 'm': total_seconds += value * 60
+            elif unit == 'h': total_seconds += value * 3600
+            elif unit == 'd': total_seconds += value * 86400
+
         if total_seconds < 60:
-            return await ctx.send("❌ Timeout duration must be at least 1 minute.")
-        
-        if total_seconds > 2419200:  # 28 days
-            return await ctx.send("❌ Timeout duration cannot exceed 28 days.")
-        
+            return await self._safe_reply(ctx, "Timeout duration must be at least 1 minute.")
+        if total_seconds > 2419200:
+            return await self._safe_reply(ctx, "Timeout duration cannot exceed 28 days.")
+
         try:
             timeout_until = datetime.now(timezone.utc) + timedelta(seconds=total_seconds)
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, reason, "TIMEOUT_APPLIED")
-            # Include the invoker in the audit-log reason (Discord audit logs show
-            # the bot application otherwise, since the action is API-performed).
             audit_reason = f"{reason} | By: {ctx.author} ({ctx.author.id})"
             await member.timeout(timeout_until, reason=audit_reason)
-            
-            embed = discord.Embed(
-                title="Member Timed Out",
-                description=f"{member.mention} has been timed out.",
-                color=discord.Color.orange()
+            view = self._mod_action_card(
+                "Member Timed Out", "timeout",
+                user=member,
+                description=f"**{member}** has been timed out.",
+                fields={
+                    "User": member.mention,
+                    "Duration": duration,
+                    "Expires": f"<t:{int(timeout_until.timestamp())}:F>",
+                    "Reason": reason,
+                    "Moderator": ctx.author.mention,
+                },
             )
-            embed.add_field(name="Duration", value=duration, inline=True)
-            embed.add_field(name="Until", value=f"<t:{int(timeout_until.timestamp())}:F>", inline=True)
-            embed.add_field(name="Reason", value=reason, inline=False)
-            embed.set_footer(text=f"Timed out by {ctx.author}")
-            
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_APPLIED")
-            await ctx.send("❌ I don't have permission to timeout that member.")
+            await self._safe_reply(ctx, "I don't have permission to timeout that member.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_APPLIED")
-            await ctx.send(f"❌ Failed to timeout: {str(e)}")
+            await self._safe_reply(ctx, f"Failed to timeout: {e}")
 
     @commands.hybrid_command(name="untimeout", aliases=["unmute"], help="Remove timeout from a member")
     @app_commands.describe(member="Member to remove timeout from", reason="Reason for removing timeout")
-    @commands.has_permissions(moderate_members=True)
     @commands.bot_has_permissions(moderate_members=True)
     @commands.guild_only()
     async def untimeout(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
         """Remove timeout from a member"""
+        if not self._check_permit(ctx, "moderate_members"):
+            return await self._safe_reply(ctx, "You do not have permission to remove timeouts.")
         if not member.timed_out_until:
-            return await ctx.send(f"❌ {member.mention} is not timed out.")
-        
+            return await self._safe_reply(ctx, f"{member.mention} is not timed out.")
+
         try:
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, reason, "TIMEOUT_REMOVED")
-            # Include the invoker in the audit-log reason (Discord audit logs show
-            # the bot application otherwise, since the action is API-performed).
             audit_reason = f"{reason} | By: {ctx.author} ({ctx.author.id})"
             await member.timeout(None, reason=audit_reason)
-            
-            embed = discord.Embed(
-                title="✅ Timeout Removed",
-                description=f"Removed timeout from {member.mention}.",
-                color=discord.Color.green()
+            view = self._mod_action_card(
+                "Timeout Removed", "untimeout",
+                user=member,
+                description=f"Timeout removed from **{member}**.",
+                fields={"User": member.mention, "Reason": reason, "Moderator": ctx.author.mention},
             )
-            embed.add_field(name="Reason", value=reason, inline=False)
-            embed.set_footer(text=f"Removed by {ctx.author}")
-            
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_REMOVED")
-            await ctx.send("❌ I don't have permission to remove timeout from that member.")
+            await self._safe_reply(ctx, "I don't have permission to remove timeout from that member.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_REMOVED")
-            await ctx.send(f"❌ Failed to remove timeout: {str(e)}")
+            await self._safe_reply(ctx, f"Failed to remove timeout: {e}")
 
     @commands.hybrid_command(name="slowmode", help="View or set slowmode delay for the current channel")
     @app_commands.describe(seconds="Slowmode delay in seconds (0 to disable, max 21600)")
-    @commands.has_permissions(manage_channels=True)
     @commands.bot_has_permissions(manage_channels=True)
     @commands.guild_only()
     async def slowmode(self, ctx: commands.Context, seconds: Optional[int] = None):
         """View or set slowmode delay for the current channel"""
+        if not self._check_permit(ctx, "manage_channels"):
+            return await self._safe_reply(ctx, "You do not have permission to change slowmode.")
         if not isinstance(ctx.channel, (discord.TextChannel, discord.Thread)):
-            return await ctx.send("❌ This command can only be used in text channels or threads.")
+            return await self._safe_reply(ctx, "This command can only be used in text channels or threads.")
 
         if seconds is None:
             current_delay = getattr(ctx.channel, "slowmode_delay", 0) or 0
-            embed = discord.Embed(
-                title="⏱ Current Slowmode",
-                description=(
-                    f"Current slowmode in {ctx.channel.mention} is **{current_delay} seconds**.\n\n"
-                    f"Use `?slowmode <a value here>` to set slowmode."
-                ),
-                color=discord.Color.blurple(),
+            view = self._mod_action_card(
+                "Current Slowmode", "info",
+                description=f"Slowmode in {ctx.channel.mention} is **{current_delay} seconds**.\nUse `?slowmode <seconds>` to change it.",
             )
-            embed.set_footer(text=f"Requested by {ctx.author}")
-            return await ctx.send(embed=embed)
+            return await self._safe_reply(ctx, view=view)
 
         if seconds < 0 or seconds > 21600:
-            return await ctx.send("❌ Slowmode delay must be between 0 and 21600 seconds (6 hours).")
-        
+            return await self._safe_reply(ctx, "Slowmode delay must be between 0 and 21600 seconds (6 hours).")
+
         try:
             await ctx.channel.edit(slowmode_delay=seconds, reason=f"Slowmode set by {ctx.author}")
-            
             if seconds == 0:
-                embed = discord.Embed(
-                    title="✅ Slowmode Disabled",
+                view = self._mod_action_card(
+                    "Slowmode Disabled", "success",
                     description=f"Slowmode has been disabled in {ctx.channel.mention}.",
-                    color=discord.Color.green()
+                    fields={"Moderator": ctx.author.mention},
                 )
             else:
-                embed = discord.Embed(
-                    title="Slowmode Enabled",
+                view = self._mod_action_card(
+                    "Slowmode Enabled", "info",
                     description=f"Slowmode set to **{seconds}** seconds in {ctx.channel.mention}.",
-                    color=discord.Color.blue()
+                    fields={"Moderator": ctx.author.mention},
                 )
-            
-            embed.set_footer(text=f"Set by {ctx.author}")
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
-            await ctx.send("❌ I don't have permission to modify this channel.")
+            await self._safe_reply(ctx, "I don't have permission to modify this channel.")
         except Exception as e:
-            await ctx.send(f"❌ Failed to set slowmode: {str(e)}")
+            await self._safe_reply(ctx, f"Failed to set slowmode: {e}")
 
     @commands.hybrid_command(name="lock", help="Lock a channel or thread to prevent members from sending messages")
     @app_commands.describe(channel="Channel/thread to lock (optional, defaults to current)")
-    @commands.has_permissions(manage_channels=True, manage_threads=True)
     @commands.bot_has_permissions(manage_channels=True, manage_threads=True)
     @commands.guild_only()
     async def lock(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
         """Lock a channel or thread to prevent members from sending messages"""
+        if not self._check_permit(ctx, "manage_channels"):
+            return await self._safe_reply(ctx, "You do not have permission to lock channels.")
+
         # Handle threads
         if isinstance(ctx.channel, discord.Thread):
             thread = ctx.channel
             try:
-                # Lock the thread
                 await thread.edit(locked=True)
-                
-                # Add lock emoji to thread name if not already present
                 new_name = thread.name
-                if not new_name.startswith("🔒"):
-                    new_name = f"🔒 {thread.name}"
+                if not new_name.startswith("[Locked]"):
+                    new_name = f"[Locked] {thread.name}"
                     await thread.edit(name=new_name, reason=f"Thread locked by {ctx.author}")
-                
-                embed = discord.Embed(
-                    title="🔒 Thread Locked",
-                    description=f"Thread '{new_name}' has been locked. Members cannot send messages.",
-                    color=discord.Color.red()
+                view = self._mod_action_card(
+                    "Thread Locked", "info",
+                    description=f"**{new_name}** has been locked.",
+                    fields={"Moderator": ctx.author.mention},
                 )
-                embed.set_footer(text=f"Locked by {ctx.author}")
-                await ctx.send(embed=embed)
+                await self._safe_reply(ctx, view=view)
             except discord.Forbidden:
-                await ctx.send("❌ I don't have permission to modify this thread.")
+                await self._safe_reply(ctx, "I don't have permission to modify this thread.")
             except Exception as e:
-                await ctx.send(f"❌ Failed to lock thread: {str(e)}")
+                await self._safe_reply(ctx, f"Failed to lock thread: {e}")
             return
-        
+
         # Handle text channels
         assert ctx.guild is not None
-
         target_channel = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
         if target_channel is None:
-            return await ctx.send("❌ This command can only be used on text channels or threads.")
-        
+            return await self._safe_reply(ctx, "This command can only be used on text channels or threads.")
+
         try:
             overwrites = target_channel.overwrites_for(ctx.guild.default_role)
             overwrites.send_messages = False
             await target_channel.set_permissions(ctx.guild.default_role, overwrite=overwrites, reason=f"Channel locked by {ctx.author}")
-            
             self.lockdown_channels.add(target_channel.id)
-            
-            embed = discord.Embed(
-                title="🔒 Channel Locked",
+            view = self._mod_action_card(
+                "Channel Locked", "error",
                 description=f"{target_channel.mention} has been locked. Members cannot send messages.",
-                color=discord.Color.red()
+                fields={"Moderator": ctx.author.mention},
             )
-            embed.set_footer(text=f"Locked by {ctx.author}")
-            
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
-            await ctx.send("❌ I don't have permission to modify this channel.")
+            await self._safe_reply(ctx, "I don't have permission to modify this channel.")
         except Exception as e:
-            await ctx.send(f"❌ Failed to lock channel: {str(e)}")
+            await self._safe_reply(ctx, f"Failed to lock channel: {e}")
 
     @commands.hybrid_command(name="unlock", help="Unlock a previously locked channel or thread")
     @app_commands.describe(channel="Channel/thread to unlock (optional, defaults to current)")
-    @commands.has_permissions(manage_channels=True, manage_threads=True)
     @commands.bot_has_permissions(manage_channels=True, manage_threads=True)
     @commands.guild_only()
     async def unlock(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
         """Unlock a channel or thread to allow members to send messages"""
+        if not self._check_permit(ctx, "manage_channels"):
+            return await self._safe_reply(ctx, "You do not have permission to unlock channels.")
+
         # Handle threads
         if isinstance(ctx.channel, discord.Thread):
             thread = ctx.channel
             try:
-                # Unlock the thread
                 await thread.edit(locked=False)
-                
-                # Remove lock emoji from thread name if present
                 new_name = thread.name
-                if new_name.startswith("🔒"):
-                    new_name = new_name[2:].lstrip()  # Remove emoji and extra space
+                if new_name.startswith("[Locked]"):
+                    new_name = new_name[len("[Locked]"):].lstrip()
                     await thread.edit(name=new_name, reason=f"Thread unlocked by {ctx.author}")
-                
-                embed = discord.Embed(
-                    title="🔓 Thread Unlocked",
-                    description=f"Thread '{new_name}' has been unlocked. Members can send messages again.",
-                    color=discord.Color.green()
+                view = self._mod_action_card(
+                    "Thread Unlocked", "success",
+                    description=f"**{new_name}** has been unlocked.",
+                    fields={"Moderator": ctx.author.mention},
                 )
-                embed.set_footer(text=f"Unlocked by {ctx.author}")
-                await ctx.send(embed=embed)
+                await self._safe_reply(ctx, view=view)
             except discord.Forbidden:
-                await ctx.send("❌ I don't have permission to modify this thread.")
+                await self._safe_reply(ctx, "I don't have permission to modify this thread.")
             except Exception as e:
-                await ctx.send(f"❌ Failed to unlock thread: {str(e)}")
+                await self._safe_reply(ctx, f"Failed to unlock thread: {e}")
             return
-        
+
         # Handle text channels
         assert ctx.guild is not None
-
         target_channel = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
         if target_channel is None:
-            return await ctx.send("❌ This command can only be used on text channels or threads.")
-        
+            return await self._safe_reply(ctx, "This command can only be used on text channels or threads.")
+
         try:
             overwrites = target_channel.overwrites_for(ctx.guild.default_role)
-            overwrites.send_messages = None  # Reset to default
+            overwrites.send_messages = None
             await target_channel.set_permissions(ctx.guild.default_role, overwrite=overwrites, reason=f"Channel unlocked by {ctx.author}")
-            
             self.lockdown_channels.discard(target_channel.id)
-            
-            embed = discord.Embed(
-                title="🔓 Channel Unlocked",
-                description=f"{target_channel.mention} has been unlocked. Members can send messages again.",
-                color=discord.Color.green()
+            view = self._mod_action_card(
+                "Channel Unlocked", "success",
+                description=f"{target_channel.mention} has been unlocked.",
+                fields={"Moderator": ctx.author.mention},
             )
-            embed.set_footer(text=f"Unlocked by {ctx.author}")
-            
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
-            await ctx.send("❌ I don't have permission to modify this channel.")
+            await self._safe_reply(ctx, "I don't have permission to modify this channel.")
         except Exception as e:
-            await ctx.send(f"❌ Failed to unlock channel: {str(e)}")
+            await self._safe_reply(ctx, f"Failed to unlock channel: {e}")
 
     @commands.hybrid_command(name="lockdown", help="Lock all channels in the server")
     @commands.has_permissions(administrator=True)
@@ -873,37 +904,39 @@ class ModCog(commands.Cog):
 
     @commands.hybrid_command(name="nickname", help="Change a member's nickname")
     @app_commands.describe(member="Member to change nickname", nickname="New nickname (leave empty to reset)")
-    @commands.has_permissions(manage_nicknames=True)
     @commands.bot_has_permissions(manage_nicknames=True)
     @commands.guild_only()
     async def nickname(self, ctx: commands.Context, member: discord.Member, *, nickname: Optional[str] = None):
         """Change a member's nickname"""
+        if not self._check_permit(ctx, "manage_nicknames"):
+            return await self._safe_reply(ctx, "You do not have permission to change nicknames.")
         if isinstance(ctx.author, discord.Member) and ctx.guild is not None:
             if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-                return await ctx.send("❌ Target has an equal or higher role.")
-        
+                return await self._safe_reply(ctx, "Target has an equal or higher role.")
+
         old_nick = member.display_name
-        
+        new_nick = nickname or member.name
+
         try:
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, f"Nickname changed by {ctx.author}", "NICKNAME_UPDATE")
             await member.edit(nick=nickname, reason=f"Nickname changed by {ctx.author}")
-            
-            embed = discord.Embed(
-                title="✏️ Nickname Changed",
-                color=discord.Color.blue()
+            view = self._mod_action_card(
+                "Nickname Changed", "info",
+                user=member,
+                fields={
+                    "Member": member.mention,
+                    "Old": old_nick,
+                    "New": new_nick,
+                    "Moderator": ctx.author.mention,
+                },
             )
-            embed.add_field(name="Member", value=member.mention, inline=True)
-            embed.add_field(name="Old Nickname", value=old_nick, inline=True)
-            embed.add_field(name="New Nickname", value=nickname or member.name, inline=True)
-            embed.set_footer(text=f"Changed by {ctx.author}")
-            
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "NICKNAME_UPDATE")
-            await ctx.send("❌ I don't have permission to change that member's nickname.")
+            await self._safe_reply(ctx, "I don't have permission to change that member's nickname.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "NICKNAME_UPDATE")
-            await ctx.send(f"❌ Failed to change nickname: {str(e)}")
+            await self._safe_reply(ctx, f"Failed to change nickname: {e}")
 
     # -------- Server Information Commands --------
     
@@ -1242,15 +1275,15 @@ class ModCog(commands.Cog):
     @unban.error
     async def _command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
-            await self._safe_reply(ctx, "❌ You lack permission for that command.")
+            await self._safe_reply(ctx, "You lack permission for that command.")
         elif isinstance(error, commands.BotMissingPermissions):
-            await self._safe_reply(ctx, "⚠️ I am missing required permissions.")
+            await self._safe_reply(ctx, "I am missing required permissions.")
         elif isinstance(error, commands.BadArgument):
-            await self._safe_reply(ctx, "⚠️ Invalid argument provided.")
+            await self._safe_reply(ctx, "Invalid argument provided.")
         elif isinstance(error, commands.CommandInvokeError) and "Unknown interaction" in str(error):
             print(f"[ModCog] Interaction expired for {ctx.command}: {error}")
         else:
-            await self._safe_reply(ctx, f"⚠️ An error occurred: {error}")
+            await self._safe_reply(ctx, f"An error occurred: {error}")
 
 
 class VerificationView(discord.ui.View):
