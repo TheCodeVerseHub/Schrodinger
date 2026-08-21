@@ -259,7 +259,7 @@ class ReactionRoles(commands.Cog):
             message = await channel.send(embed=embed)
             
             # Add reactions
-            for emoji, role in role_pairs:
+            for emoji, _role in role_pairs:
                 try:
                     await message.add_reaction(emoji)
                 except discord.HTTPException:
