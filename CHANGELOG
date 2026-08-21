@@ -22,7 +22,6 @@ All notable changes to this project will be documented in this file.
 - **Server rules updated**: R1-R12 updated with new wording (R2 dating warning, R7 drugs/weed, R8 AI content policy, R9 English requirement, R10 streaming rules, R11 alt accounts/tags/pronouns, R12 ban appeal link). R34 removed.
 
 ### Removed
-- **R34 rule**: Removed the R34 ("Heyy That's Not Allowed!") command and rule text.
 - **APPEAL_SUBMITTED log**: Removed the noisy "User submitted a timeout appeal" embed from the appeals log channel.
 
 ### Fixed

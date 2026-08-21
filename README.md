@@ -22,7 +22,7 @@
 - **Centralized logging** -> webhook-based event logging with per-guild channel configuration.
 - **Thread management** -> close/archive, pin, and unpin threads.
 - **Embed builder & server tooling** -> interactive embed creator plus `?ls` channel/role/permission auditing tools, including `?ls channels ?v` (view permissions) and `?ls noroles` (members with no roles).
-- **Rules & community** -> quick rule-reference commands (`?r1`…`?r13`, `?tldr`).
+- **Rules & community** -> quick rule-reference commands (`?r1`…`?r13`, `?r34`, `?tldr`).
 - **Protection** -> protected-channel auto-timeout, authorized-server enforcement, and more.
 
 > **Prefix:** `?` (per-guild override via `/prefix`) • **Slash:** `/` • **Access:** Authorized role or bot owner only
@@ -175,7 +175,7 @@ A full, maintained reference lives in [`docs/COMMAND_REFERENCE.md`](docs/COMMAND
 |---------|-------------|
 | `/embed` • `/editembed` | Interactive Components V2 embed builder (author, webhook identity, link button) |
 | `?ls role/perms/perm/noperms/noroles/members/channels/categories/bots/boosters` | Server auditing tools (prefix only, `?ls channels ?v` for view audit) |
-| `?r1`…`?r13` • `?tldr` | Quick rule reference (prefix only) |
+| `?r1`…`?r13` • `?r34` • `?tldr` | Quick rule reference (prefix only) |
 | `?permits` | Show all available permits with permissions |
 
 ## Project Structure

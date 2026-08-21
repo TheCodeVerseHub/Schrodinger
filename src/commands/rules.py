@@ -90,6 +90,12 @@ class RulesCog(commands.Cog):
                 "Rules cannot cover every situation; exploiting loopholes or intentionally harming the "
                 "community is not allowed. Use common sense."
             ),
+            "r34": (
+                "**R34 \u276f Heyy That's Not Allowed!**\n\n"
+                "Rule 34 content is strictly prohibited on this server.\n"
+                "This includes images, videos, text, or any other media depicting explicit content of fictional characters.\n"
+                "Violations will result in immediate action."
+            ),
             "tldr": (
                 "**TL;DR**\n"
                 "Follow Discord ToS. Respect others. No hate, NSFW, scams, spam, advertising, or "
@@ -163,6 +169,10 @@ class RulesCog(commands.Cog):
     @commands.command(name="r13", help="R13: Use Common Sense")
     async def rule13(self, ctx):
         await self.send_rule(ctx, "r13")
+
+    @commands.command(name="r34", help="R34: Heyy That's Not Allowed!")
+    async def rule34(self, ctx):
+        await self.send_rule(ctx, "r34")
 
     @commands.command(name="tldr", help="TL;DR of the rules")
     async def tldr_rule(self, ctx):
