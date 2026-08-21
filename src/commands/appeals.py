@@ -1358,14 +1358,6 @@ class Appeals(commands.Cog):
             )
             return
 
-        await self._log_appeal_event(
-            "APPEAL_SUBMITTED",
-            updated_record,
-            moderator=None,
-            reason="User submitted a timeout appeal.",
-            jump_url=interaction.message.jump_url if interaction.message else None,
-        )
-
         review_view = AppealReviewDashboard(self, updated_record)
         review_channel = await self._resolve_review_channel(updated_record.guild_id)
         if review_channel and self._guard_appeals_channel(
