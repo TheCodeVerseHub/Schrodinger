@@ -259,15 +259,24 @@ class EmbedBuilder(commands.Cog):
 
         # Key Permissions to highlight
         key_perms = []
-        if perms.administrator: key_perms.append("Administrator")
-        if perms.manage_guild: key_perms.append("Manage Server")
-        if perms.manage_roles: key_perms.append("Manage Roles")
-        if perms.manage_channels: key_perms.append("Manage Channels")
-        if perms.ban_members: key_perms.append("Ban Members")
-        if perms.kick_members: key_perms.append("Kick Members")
-        if perms.manage_messages: key_perms.append("Manage Messages")
-        if perms.mention_everyone: key_perms.append("Mention Everyone")
-        if perms.view_audit_log: key_perms.append("View Audit Log")
+        if perms.administrator:
+            key_perms.append("Administrator")
+        if perms.manage_guild:
+            key_perms.append("Manage Server")
+        if perms.manage_roles:
+            key_perms.append("Manage Roles")
+        if perms.manage_channels:
+            key_perms.append("Manage Channels")
+        if perms.ban_members:
+            key_perms.append("Ban Members")
+        if perms.kick_members:
+            key_perms.append("Kick Members")
+        if perms.manage_messages:
+            key_perms.append("Manage Messages")
+        if perms.mention_everyone:
+            key_perms.append("Mention Everyone")
+        if perms.view_audit_log:
+            key_perms.append("View Audit Log")
 
         # Create list of enabled permissions
         enabled_perms = [p[0].replace('_', ' ').title() for p in perms if p[1]]
@@ -368,7 +377,8 @@ class EmbedBuilder(commands.Cog):
         # Find roles
         roles_with_perm = []
         for role in ctx.guild.roles:
-            if role.is_default(): continue
+            if role.is_default():
+                continue
             # Administrator implies all permissions
             if role.permissions.administrator or getattr(role.permissions, matched_perm):
                 roles_with_perm.append(role)
@@ -396,7 +406,8 @@ class EmbedBuilder(commands.Cog):
         """List cosmetic roles (no permissions at all)"""
         roles = []
         for role in ctx.guild.roles:
-            if role.is_default(): continue # Skip @everyone
+            if role.is_default():
+                continue # Skip @everyone
             # Check if role has NO permissions
             if role.permissions.value == 0:
                 roles.append(role)
@@ -449,7 +460,8 @@ class EmbedBuilder(commands.Cog):
         # List all roles with permissions
         roles = []
         for r in ctx.guild.roles:
-            if r.is_default(): continue
+            if r.is_default():
+                continue
             if r.permissions.value != 0:
                 roles.append(r)
 
@@ -492,8 +504,8 @@ class EmbedBuilder(commands.Cog):
         await _ls_send(
             ctx,
             _ls_container(
-                f"Users with No Roles",
-                f"These members only have the @everyone role.",
+                "Users with No Roles",
+                "These members only have the @everyone role.",
                 lines,
                 footer=f"Total: {len(no_role_members)} user{'s' if len(no_role_members) != 1 else ''}",
             ),

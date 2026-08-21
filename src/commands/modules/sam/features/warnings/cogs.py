@@ -1,9 +1,7 @@
-import re
 from typing import Optional, Any
 
 import discord  # type: ignore[import-not-found]
 from discord.ext import commands  # type: ignore[import-not-found]
-from sqlalchemy.ext.asyncio import AsyncSession  # type: ignore[import-not-found]
 
 from ...internal import database, logger_config
 from .services import WarnService
@@ -216,7 +214,7 @@ class Warnings(commands.Cog):
                     },
                 )
                 await ctx.send(view=view)
-        except ValueError as e:
+        except ValueError:
             view = _mod_card("Error", "error", description=f"Warning `#{case_id}` not found or invalid.")
             await ctx.send(view=view)
         except Exception as e:

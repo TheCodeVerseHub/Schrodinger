@@ -3,7 +3,6 @@ from discord import app_commands
 from discord.ext import commands
 import sqlite3
 import logging
-from typing import List, Optional
 
 from config import DATABASE_NAME
 from utils.embeds import create_info_embed, create_success_embed, create_error_embed

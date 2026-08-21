@@ -6,14 +6,12 @@ Merges functionality from moderation.py, moderation_extended.py, and sam warning
 import discord  # type: ignore[import-not-found]
 import asyncio
 import re
-import sqlite3
 from discord.ext import commands  # type: ignore[import-not-found]
 from discord import app_commands  # type: ignore[import-not-found]
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Union, Any, cast
 from collections.abc import Awaitable, Callable
-from utils.embeds import create_success_embed, create_error_embed, create_info_embed
-from utils.helpers import log_action, safe_send, register_mod_action, discard_mod_action
+from utils.helpers import safe_send, register_mod_action, discard_mod_action
 from config import (
     BOT_OWNER_ID,
     MODERATION_ROLE_ID,
@@ -26,11 +24,11 @@ from config import (
 
 # SAM Module imports for warnings
 try:
-    from sqlalchemy.ext.asyncio import AsyncSession  # type: ignore[import-not-found]
-    from .modules.sam.internal import database, logger_config
-    from .modules.sam.features.warnings.services import WarnService
-    from .modules.sam.features.warnings.models import Warn
-    from .modules.sam.public import logging_api
+    from sqlalchemy.ext.asyncio import AsyncSession  # noqa: F401  type: ignore[import-not-found]
+    from .modules.sam.internal import database, logger_config  # noqa: F401
+    from .modules.sam.features.warnings.services import WarnService  # noqa: F401
+    from .modules.sam.features.warnings.models import Warn  # noqa: F401
+    from .modules.sam.public import logging_api  # noqa: F401
     
     SAM_AVAILABLE = True
     logger = logger_config.logger.getChild("modcog.warnings")
@@ -493,10 +491,14 @@ class ModCog(commands.Cog):
         total_seconds = 0
         for value, unit in matches:
             value = int(value)
-            if unit == 's': total_seconds += value
-            elif unit == 'm': total_seconds += value * 60
-            elif unit == 'h': total_seconds += value * 3600
-            elif unit == 'd': total_seconds += value * 86400
+            if unit == 's':
+                total_seconds += value
+            elif unit == 'm':
+                total_seconds += value * 60
+            elif unit == 'h':
+                total_seconds += value * 3600
+            elif unit == 'd':
+                total_seconds += value * 86400
 
         if total_seconds < 60:
             return await self._safe_reply(ctx, "Discord requires timeouts to be at least 1 minute long.")
@@ -723,7 +725,7 @@ class ModCog(commands.Cog):
                 await channel.set_permissions(ctx.guild.default_role, overwrite=overwrites, reason=f"Server lockdown by {ctx.author}")
                 self.lockdown_channels.add(channel.id)
                 locked_count += 1
-            except:
+            except (discord.Forbidden, Exception):
                 failed_count += 1
         
         embed = discord.Embed(
@@ -763,7 +765,7 @@ class ModCog(commands.Cog):
                     await channel.set_permissions(ctx.guild.default_role, overwrite=overwrites, reason=f"Lockdown removed by {ctx.author}")
                     self.lockdown_channels.discard(channel_id)
                     unlocked_count += 1
-                except:
+                except (discord.Forbidden, Exception):
                     failed_count += 1
         
         embed = discord.Embed(

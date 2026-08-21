@@ -123,7 +123,8 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
             )
             result = cursor.fetchone()
             conn.close()
-            if not result: return None
+            if not result:
+                return None
             
             message_ch, member_ch, server_ch, ticket_ch, mod_ch, other_ch = result
             
@@ -138,7 +139,8 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
                 return server_ch
                 
             return other_ch
-        except: return None
+        except Exception:
+            return None
 
     async def log_event(self, event_type: str, user_id: Optional[int] = None, 
                         guild_id: Optional[int] = None, moderator_id: Optional[int] = None, 
@@ -203,17 +205,19 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
         guild_id = log_item.get("guild_id")
         event_type = log_item.get("event_type")
         
-        if not guild_id: return
+        if not guild_id:
+            return
 
         channel_id = await self.get_log_channel_id(guild_id, event_type)
-        if not channel_id: return
+        if not channel_id:
+            return
         
         channel = self.bot.get_channel(channel_id)
         if not channel: 
             # Try to fetch if not in cache
             try:
                 channel = await self.bot.fetch_channel(channel_id)
-            except:
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
                 logger.warning(f"Could not find log channel {channel_id} for guild {guild_id}")
                 return
 
@@ -254,7 +258,8 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
                 cursor.execute("UPDATE bot_logs SET sent_to_discord = 1 WHERE id = ?", (log_item["log_id"],))
                 conn.commit()
                 conn.close()
-            except: pass
+            except Exception:
+                pass
 
     # Public API for other cogs
     async def log_mod_action(self, action_type: str, user_id: int, guild_id: int, 
@@ -308,7 +313,7 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
             conn.close()
             if not row:
                 return None
-            return dict(zip(LOG_COLUMNS, row))
+            return dict(zip(LOG_COLUMNS, row, strict=False))
         except Exception as e:
             logger.error(f"Error reading log channel config: {e}")
             return None

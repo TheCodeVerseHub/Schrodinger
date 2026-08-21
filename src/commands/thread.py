@@ -8,7 +8,6 @@ import discord
 from discord.ext import commands
 
 from utils.database import DATABASE_NAME
-from utils.embeds import create_error_embed, create_success_embed
 from config import STAFF_ROLE_ID, ADMIN_BYPASS_ROLE_ID
 
 
@@ -84,7 +83,6 @@ class ThreadCloser(commands.Cog):
         """Close a ticket thread"""
         ticket_id = ticket_info["ticket_id"]
         user_id = ticket_info["user_id"]
-        category = ticket_info["category"]
 
         # Check permissions (ticket owner or staff)
         has_permission = False

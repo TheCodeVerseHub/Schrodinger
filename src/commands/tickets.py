@@ -11,7 +11,6 @@ from discord.ext import commands
 
 from utils.database import DATABASE_NAME
 from utils.embeds import create_error_embed, create_info_embed, create_success_embed
-from utils.helpers import safe_interaction_reply
 from config import STAFF_ROLE_ID, ADMIN_BYPASS_ROLE_ID, TICKET_LOGS_CHANNEL_ID
 
 logger = logging.getLogger("codeverse.tickets")

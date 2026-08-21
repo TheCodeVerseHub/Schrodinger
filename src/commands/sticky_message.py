@@ -351,7 +351,7 @@ class StickyMessage(commands.Cog):
                 color=0x0000ff
             )
             
-            for channel_id, content, created_at in results[:10]:  # Limit to 10 for embed limits
+            for channel_id, content, _created_at in results[:10]:  # Limit to 10 for embed limits
                 channel = self.bot.get_channel(channel_id)
                 channel_name = channel.mention if channel else f"<#{channel_id}> (deleted)"
                 
