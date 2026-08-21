@@ -231,6 +231,7 @@ class EmbedBuilder(commands.Cog):
         commands_list = [
             "`?ls channels` - List all channels (categories, text, voice)",
             "`?ls channels ?w <Target> <Perm>` - Find channels where User/Role has Permission",
+            "`?ls channels ?v <channel>` - Show who can view a specific channel",
             "`?ls categories [?w ...]` - List categories (optional: filter by permission)",
             "`?ls role <role>` - View full details and permissions of a role",
             "`?ls members <role>` - List members who have a specific role",
@@ -239,6 +240,7 @@ class EmbedBuilder(commands.Cog):
             "`?ls boosters` - List server boosters",
             "`?ls perms` - List roles that have permissions",
             "`?ls noperms` - List cosmetic roles (no permissions)",
+            "`?ls noroles` - List users with no roles",
         ]
         await _ls_send(
             ctx,
@@ -467,13 +469,48 @@ class EmbedBuilder(commands.Cog):
                 footer=f"Total: {len(roles)} roles",
             ),
         )
+    @ls_command.command(name="noroles")
+    async def ls_noroles(self, ctx):
+        """Show all users in the server who have no roles (no role at all)."""
+        no_role_members = [
+            m for m in ctx.guild.members if len(m.roles) == 1  # only @everyone
+        ]
+
+        if not no_role_members:
+            await _ls_send(
+                ctx,
+                _ls_container(
+                    "Users with No Roles",
+                    None,
+                    [],
+                    empty_text="Every member in this server has at least one role.",
+                ),
+            )
+            return
+
+        lines = [f"{m.mention} ({m.id})" for m in sorted(no_role_members, key=lambda m: m.display_name.lower())]
+        await _ls_send(
+            ctx,
+            _ls_container(
+                f"Users with No Roles",
+                f"These members only have the @everyone role.",
+                lines,
+                footer=f"Total: {len(no_role_members)} user{'s' if len(no_role_members) != 1 else ''}",
+            ),
+        )
 
     @ls_command.command(name="channels")
     async def ls_channels(self, ctx, *args):
-        """List channels. Usage: ?ls channels [?w <Role/User> <Permission>]"""
+        """List channels. Usage: ?ls channels [?w <Role/User> <Permission>] | ?v <channel>"""
 
         # Check for ?w argument for filtering
         full_args = " ".join(args)
+
+        # ── ?v  –  show who can view a specific channel ──
+        if "?v" in full_args:
+            await self._ls_channels_view(ctx, full_args)
+            return
+
         if "?w" in full_args:
             # Parse usage: ?ls channels ?w <Target> <Permission>
             try:
@@ -655,6 +692,126 @@ class EmbedBuilder(commands.Cog):
                 container.add_item(discord.ui.TextDisplay(chunk))
 
         await _ls_send(ctx, container)
+
+    async def _ls_channels_view(self, ctx, full_args: str):
+        """Show which roles/users can view a specific channel.
+
+        Usage: ?ls channels ?v #channel-name
+        """
+        # Extract channel mention or ID after ?v
+        params = full_args.split("?v", 1)[1].strip()
+        if not params:
+            await ctx.send("❌ Please provide a channel. Usage: `?ls channels ?v #channel-name`")
+            return
+
+        channel_str = params.strip()
+
+        # Resolve the channel
+        channel = None
+        # Try channel mention / ID converter
+        try:
+            channel = await commands.TextChannelConverter().convert(ctx, channel_str)
+        except commands.BadArgument:
+            await ctx.send(
+                f"❌ Could not find a text channel named `{channel_str}`."
+            )
+            return
+
+        if channel is None:
+            return
+
+        # Determine who has view_channel
+        # Collect roles and members with explicit view_channel=True
+        view_roles: list[discord.Role] = []
+        view_users: list[discord.Member] = []
+        deny_roles: list[discord.Role] = []
+        deny_users: list[discord.Member] = []
+
+        # Check @everyone first
+        everyone_overwrite = channel.overwrites_for(ctx.guild.default_role)
+        everyone_can_view = everyone_overwrite.view_channel
+        # view_channel can be None (inherits) – treat as True for @everyone
+        everyone_view_allowed = everyone_can_view is not False
+
+        # Iterate over all overwrites for the channel
+        for target, overwrite in channel.overwrites.items():
+            can_view = overwrite.view_channel
+            if can_view is True:
+                if isinstance(target, discord.Role):
+                    view_roles.append(target)
+                elif isinstance(target, discord.Member):
+                    view_users.append(target)
+            elif can_view is False:
+                if isinstance(target, discord.Role):
+                    deny_roles.append(target)
+                elif isinstance(target, discord.Member):
+                    deny_users.append(target)
+
+        # Members who inherit view through roles
+        inherited_view_members: list[discord.Member] = []
+        if everyone_view_allowed:
+            for member in ctx.guild.members:
+                # Skip members already explicitly allowed or denied
+                if member in view_users or member in deny_users:
+                    continue
+                # Check if any of their roles grant explicit view
+                member_roles = set(member.roles)
+                if any(r in view_roles for r in member_roles):
+                    view_users.append(member)
+                elif any(r in deny_roles for r in member_roles):
+                    deny_users.append(member)
+                else:
+                    # Inherits from @everyone
+                    inherited_view_members.append(member)
+
+        # Combine: explicit allows + inherited (if @everyone allows)
+        all_view = view_users + (
+            inherited_view_members if everyone_view_allowed else []
+        )
+
+        # Build display
+        title = f"Can View: {channel.name}"
+        sections: list[str] = []
+
+        if view_roles:
+            sections.append("### Roles (Explicit Allow)")
+            for r in sorted(view_roles, key=lambda r: r.position, reverse=True):
+                sections.append(f"• {r.mention}")
+
+        if view_users:
+            # Show explicit + inherited together
+            mention_list = [m.mention for m in sorted(all_view, key=lambda m: m.display_name.lower())]
+            sections.append(f"### Users ({len(all_view)})")
+            for chunk in _ls_chunk_lines(mention_list, max_chars=1200):
+                sections.append(chunk)
+
+        if deny_roles:
+            sections.append("### Roles (Explicit Deny)")
+            for r in sorted(deny_roles, key=lambda r: r.position, reverse=True):
+                sections.append(f"• {r.mention}")
+
+        if deny_users:
+            sections.append("### Users (Explicit Deny)")
+            for m in sorted(deny_users, key=lambda m: m.display_name.lower()):
+                sections.append(f"• {m.mention}")
+
+        if not sections:
+            # Nobody has explicit overwrites; fall back to inheritance info
+            if everyone_view_allowed:
+                sections.append(
+                    f"*No explicit overwrites. **{ctx.guild.member_count}** members can view via @everyone.*"
+                )
+            else:
+                sections.append("*No one can view this channel (view denied at @everyone level).*")
+
+        await _ls_send(
+            ctx,
+            _ls_container(
+                title,
+                f"Channel: {channel.mention} (`{channel.id}`)",
+                sections,
+            ),
+        )
 
     @ls_command.command(name="categories", aliases=["category"])
     async def ls_categories(self, ctx, *args):
