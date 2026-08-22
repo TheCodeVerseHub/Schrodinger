@@ -22,7 +22,9 @@
 - **Centralized logging** -> webhook-based event logging with per-guild channel configuration.
 - **Thread management** -> close/archive, pin, and unpin threads.
 - **Embed builder & server tooling** -> interactive embed creator plus `?ls` channel/role/permission auditing tools, including `?ls channels ?v` (view permissions) and `?ls noroles` (members with no roles).
-- **Rules & community** -> quick rule-reference commands (`?r1`…`?r13`, `?r34`, `?tldr`).
+- **Rules & community** -> quick rule-reference commands (`?r1`…`?r13`, `?r34`, `?tldr`). Rules commands are usable by anyone via prefix, no authorized role needed.
+- **Welcome system** -> Components V2 welcome DM sent to new members with Quick Links, How to Verify (ephemeral guide), Website, and GitHub buttons. `?sendwm` for testing.
+- **Welcome system** -> Components V2 welcome DM with Quick Links, How to Verify button (ephemeral guide), Website and GitHub links.
 - **Protection** -> protected-channel auto-timeout, authorized-server enforcement, and more.
 
 > **Prefix:** `?` (per-guild override via `/prefix`) • **Slash:** `/` • **Access:** Authorized role or bot owner only
@@ -177,6 +179,7 @@ A full, maintained reference lives in [`docs/COMMAND_REFERENCE.md`](docs/COMMAND
 | `?ls role/perms/perm/noperms/noroles/members/channels/categories/bots/boosters` | Server auditing tools (prefix only, `?ls channels ?v` for view audit) |
 | `?r1`…`?r13` • `?r34` • `?tldr` | Quick rule reference (prefix only) |
 | `?permits` | Show all available permits with permissions |
+| `?sendwm` | Send the welcome DM to a user for testing (prefix only) |
 
 ## Project Structure
 

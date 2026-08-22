@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **`?sendwm`**: Debug command to send the welcome DM to a specified user or the command author (prefix only, no auth required).
+- **Welcome DM with Components V2**: Completely redesigned welcome DM with clean layout, Quick Links section, and three action buttons (How to Verify, Website, GitHub). The How to Verify button sends an ephemeral guide explaining the Wick captcha and Rules Screening process.
+- **Rules commands bypass authorization**: `?r1`–`?r13`, `?r34`, and `?tldr` can now be used by anyone via prefix, even without the authorized role.
+- **Thread lock emoji**: `?lock` now prefixes thread names with a lock emoji (🔒) instead of `[Locked]` text.
+
+### Changed
+- **Logging user mentions fixed**: The logging formatter now resolves users via `guild.fetch_member()` instead of `bot.fetch_user()`, so log mentions render as proper Discord pings instead of raw `<@id>` text.
+- **`?ls noroles` member cache**: The command now fetches all members from the API before scanning to ensure the member cache is fully populated.
+
+### Added
 - **`?ls channels ?v`**: Audit which roles/users can view a specific channel via permission overwrites.
 - **`?ls noroles`**: List all members who have no roles (only @everyone).
 - **`?permits`**: Prefix-only command to show all available permits with their permissions and user counts in a Components V2 container.

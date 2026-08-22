@@ -23,6 +23,7 @@ Commands are hybrid unless marked **(prefix only)** or **(slash only)**.
 - [Utility & Embed Builder](#utility--embed-builder)
 - [Server Listing](#server-listing-prefix-only)
 - [Rules](#rules-prefix-only)
+- [Welcome System](#welcome-system-prefix-only)
 - [Diagnostics & Owner](#diagnostics--owner)
 
 ---
@@ -229,6 +230,17 @@ Commands are hybrid unless marked **(prefix only)** or **(slash only)**.
 | `?r1` … `?r12` | Post a specific server rule |
 | `?r34` | Post the extra rule |
 | `?tldr` | TL;DR of the rules |
+
+> **Note:** Rules commands can be used by anyone, even without the authorized role.
+
+---
+
+## Welcome System **(prefix only)**
+**Source:** `src/events/member_events.py`
+
+| Command | Description | Permission |
+|---------|-------------|-----------|
+| `?sendwm` | Send the welcome DM to a user for testing | None |
 
 ---
 

@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from typing import Optional
 
 from config import (
     INTRODUCTION_CHANNEL_ID,
@@ -20,19 +21,20 @@ GITHUB_URL = "https://github.com/youngcoder45/codeverse-bot"
 class VerifyView(discord.ui.LayoutView):
     """Ephemeral view shown when the How to Verify button is clicked."""
 
-    def __init__(self, guild_icon_url=None):
+    def __init__(self):
         super().__init__(timeout=60)
         container = discord.ui.Container(accent_color=discord.Color.from_rgb(0, 122, 255))
         container.add_item(discord.ui.TextDisplay("## How to Verify"))
         container.add_item(discord.ui.Separator())
         container.add_item(discord.ui.TextDisplay(
-            f"**Step 1:** Go to the verification channel and complete the Wick captcha.\n"
-            f"> <#{WELCOME_CHANNEL_ID}>"
+            f"**Step 1:** Before verifying, make sure you have read and accepted the server rules.\n"
+            f"If you are unsure how Rules Screening works, see Discord's official guide: <{RULES_SCREENING_URL}>"
+
         ))
         container.add_item(discord.ui.Separator())
         container.add_item(discord.ui.TextDisplay(
-            f"**Step 2:** Before verifying, make sure you have read and accepted the server rules.\n"
-            f"If you are unsure how Rules Screening works, see Discord's official guide: <{RULES_SCREENING_URL}>"
+            f"**Step 2:** Go to the verification channel and complete the Wick captcha.\n"
+            f"> <#{WELCOME_CHANNEL_ID}>"
         ))
         container.add_item(discord.ui.Separator())
         container.add_item(discord.ui.TextDisplay(
@@ -59,6 +61,65 @@ class WelcomeView(discord.ui.LayoutView):
         super().__init__(timeout=None)
 
 
+def build_welcome_view(member: discord.Member) -> WelcomeView:
+    """Build the welcome Components V2 view for a given member."""
+    guild = member.guild
+    accent = discord.Color.from_rgb(0, 122, 255)
+
+    container = discord.ui.Container(accent_color=accent)
+
+    # Header
+    container.add_item(discord.ui.TextDisplay("## Welcome to The CodeVerse Hub"))
+    container.add_item(discord.ui.Separator())
+
+    # Intro
+    container.add_item(discord.ui.TextDisplay(
+        f"Hello {member.mention}, thank you for joining. "
+        f"We are a community of developers, engineers, and tech enthusiasts. "
+        f"Here is everything you need to get started."
+    ))
+
+    # Channels section
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay("**Quick Links**"))
+    container.add_item(discord.ui.TextDisplay(
+        f"> <#{INTRODUCTION_CHANNEL_ID}> - Introduce yourself to the community\n"
+        f"> <#{WELCOME_ROLES_CHANNEL_ID}> - Pick up your roles\n"
+        f"> <#{WELCOME_GENERAL_CHANNEL_ID}> - Join the conversation\n"
+        f"> <#{WELCOME_IDEAS_CHANNEL_ID}> - Share ideas and suggestions\n"
+        f"> <#{HELP_FORUM_ID}> - Ask for help from the team or experienced members\n"
+        f"> <#{WELCOME_TICKET_CHANNEL_ID}> - Contact support via a ticket"
+    ))
+
+    # Action buttons
+    container.add_item(discord.ui.Separator())
+    action_row = discord.ui.ActionRow(
+        VerifyButton(),
+        discord.ui.Button(
+            label="Our Website",
+            style=discord.ButtonStyle.link,
+            url=WEBSITE_URL,
+        ),
+        discord.ui.Button(
+            label="GitHub",
+            style=discord.ButtonStyle.link,
+            url=GITHUB_URL,
+        ),
+    )
+    container.add_item(action_row)
+
+    # Footer
+    container.add_item(discord.ui.Separator())
+    container.add_item(discord.ui.TextDisplay(
+        f"You are member **#{guild.member_count}**. "
+        f"We look forward to having you here."
+    ))
+
+    view = WelcomeView()
+    view.add_item(container)
+    return view
+
+
 class MemberEvents(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -67,67 +128,25 @@ class MemberEvents(commands.Cog):
     async def on_member_join(self, member: discord.Member):
         """Handle member join: track user and send welcome DM."""
         try:
-            guild = member.guild
-            accent = discord.Color.from_rgb(0, 122, 255)
-
-            container = discord.ui.Container(accent_color=accent)
-
-            # Header
-            container.add_item(discord.ui.TextDisplay("## Welcome to The CodeVerse Hub"))
-            container.add_item(discord.ui.Separator())
-
-            # Intro
-            container.add_item(discord.ui.TextDisplay(
-                f"Hello {member.mention}, thank you for joining. "
-                f"We are a community of developers, engineers, and tech enthusiasts. "
-                f"Here is everything you need to get started."
-            ))
-
-            # Channels section
-            container.add_item(discord.ui.Separator())
-            container.add_item(discord.ui.TextDisplay("**Quick Links**"))
-            container.add_item(discord.ui.TextDisplay(
-                f"> <#{INTRODUCTION_CHANNEL_ID}> — Introduce yourself to the community\n"
-                f"> <#{WELCOME_ROLES_CHANNEL_ID}> — Pick up your roles\n"
-                f"> <#{WELCOME_GENERAL_CHANNEL_ID}> — Join the conversation\n"
-                f"> <#{WELCOME_IDEAS_CHANNEL_ID}> — Share ideas and suggestions\n"
-                f"> <#{HELP_FORUM_ID}> — Ask for help from the team or experienced members\n"
-                f"> <#{WELCOME_TICKET_CHANNEL_ID}> — Contact support via a ticket"
-            ))
-
-            # Action buttons
-            container.add_item(discord.ui.Separator())
-            action_row = discord.ui.ActionRow(
-                VerifyButton(),
-                discord.ui.Button(
-                    label="Website",
-                    style=discord.ButtonStyle.link,
-                    url=WEBSITE_URL,
-                ),
-                discord.ui.Button(
-                    label="GitHub",
-                    style=discord.ButtonStyle.link,
-                    url=GITHUB_URL,
-                ),
-            )
-            container.add_item(action_row)
-
-            # Footer
-            container.add_item(discord.ui.Separator())
-            container.add_item(discord.ui.TextDisplay(
-                f"You are member **#{guild.member_count}**. "
-                f"We look forward to having you here."
-            ))
-
-            view = WelcomeView()
-            view.add_item(container)
-
+            view = build_welcome_view(member)
             await member.send(view=view)
-
         except discord.Forbidden:
             pass
         except Exception as e:
             print(f"Error sending welcome DM: {e}")
+
+    @commands.command(name="sendwm")
+    async def send_welcome_message(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+        """Send the welcome DM to a user for testing. Defaults to the command author."""
+        target = member or ctx.author
+        try:
+            view = build_welcome_view(target)
+            await target.send(view=view)
+            await ctx.send(f"✅ Welcome DM sent to {target.mention}.")
+        except discord.Forbidden:
+            await ctx.send(f"❌ Could not send DM to {target.mention} (DMs may be disabled).")
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
 
 
 async def setup(bot):

@@ -50,11 +50,12 @@ COG_CATEGORIES: dict[str, str] = {
     "RulesCog": "Utilities",
     "ThreadCloser": "Utilities",
     "HelpThreadNotification": "Utilities",
+    "MemberEvents": "Utilities",
     "MessageHandler": "Miscellaneous",
 }
 
 # Cog classes that are purely automated (no user-invocable commands).
-_AUTOMATED_COGS = {"LoggingCog", "MemberEvents"}
+_AUTOMATED_COGS = {"LoggingCog"}
 
 # Hidden commands that are still intended for regular users.
 _USER_HIDDEN_COMMANDS = {"needhelp"}

@@ -24,6 +24,7 @@ This document provides a comprehensive list of all commands available in the Cod
   - [Embed Builder](#embed-builder)
   - [Server Listing (`?ls`)](#server-listing-ls)
 - [Rules Commands](#rules-commands)
+- [Welcome System](#welcome-system)
 - [Owner Commands](#owner-commands)
 
 ---
@@ -249,6 +250,17 @@ Default log destinations are configured in `.env` (`LOG_CHANNEL_*_ID` variables)
 | `?r1` … `?r12` | Post a specific server rule |
 | `?r34` | Post the extra rule |
 | `?tldr` | Post the TL;DR summary of the rules |
+
+> **Note:** Rules commands can be used by anyone, even without the authorized role.
+
+---
+
+## Welcome System
+**Source:** `src/events/member_events.py` (prefix only)
+
+| Command | Description | Usage | Permission |
+|---------|-------------|-------|------------|
+| `?sendwm` | Send the welcome DM to a user for testing | `?sendwm [@user]` | None |
 
 ---
 
