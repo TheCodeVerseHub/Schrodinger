@@ -2005,7 +2005,7 @@ class Appeals(commands.Cog):
                 if time_diff > 60:
                     continue
                 if entry.user and not entry.user.bot:
-                    return f"{entry.user.display_name} ({entry.user.id})", entry.reason or "No reason provided"
+                    return entry.user.mention, entry.reason or "No reason provided"
                 # Audit entry made by the bot (API timeout removal) - look for
                 # the human actor in the audit reason.
                 if entry.user and entry.user.id == member.guild.me.id:
@@ -2304,7 +2304,7 @@ class Appeals(commands.Cog):
             if ch:
                 embed = discord.Embed(
                     title="DM Delivery Failed",
-                    description=f"**Could not send appeal form to {user.display_name} ({user.id})**\nUser will NOT be able to submit an appeal via DM.",
+                    description=f"**Could not send appeal form to {user.mention}**\nUser will NOT be able to submit an appeal via DM.",
                     color=APPEALS_REJECT_COLOR,
                 )
                 embed.add_field(name="User", value=f"{user} ({user.id})", inline=True)
@@ -2350,7 +2350,7 @@ class Appeals(commands.Cog):
             if ch:
                 embed = discord.Embed(
                     title="DM Delivered Successfully",
-                    description=f"Successfully sent appeal form to {user.display_name} ({user.id})",
+                    description=f"Successfully sent appeal form to {user.mention}",
                     color=APPEALS_ACCEPT_COLOR,
                 )
                 embed.add_field(name="User", value=f"{user} ({user.id})", inline=True)
@@ -2498,7 +2498,7 @@ class Appeals(commands.Cog):
                         )
                         action_text = "Timeout removed via approved appeal"
                         log_title = "Timeout Removed via Approved Appeal"
-                        log_description = f"User {after.display_name} ({after.id}) had their timeout removed after appeal **#{appeal_id_for_log}** was approved."
+                        log_description = f"User {after.mention} had their timeout removed after appeal **#{appeal_id_for_log}** was approved."
                         color = APPEALS_ACCEPT_COLOR
                     elif was_natural_expiry:
                         logger.info(
@@ -2508,7 +2508,7 @@ class Appeals(commands.Cog):
                         )
                         action_text = "Natural timeout expiry"
                         log_title = "Natural Timeout Expiry Detected"
-                        log_description = f"User {after.display_name} ({after.id}) had their timeout naturally expire while having a pending appeal."
+                        log_description = f"User {after.mention} had their timeout naturally expire while having a pending appeal."
                         color = APPEALS_TIMEOUT_END_COLOR
                     else:
                         logger.info(
@@ -2518,7 +2518,7 @@ class Appeals(commands.Cog):
                         )
                         action_text = "Manual timeout removal"
                         log_title = "Manual Timeout Removal Detected"
-                        log_description = f"User {after.display_name} ({after.id}) had their timeout manually removed while having a pending appeal."
+                        log_description = f"User {after.mention} had their timeout manually removed while having a pending appeal."
                         color = APPEALS_TIMEOUT_END_COLOR
                         # Identify the moderator and removal reason for audit.
                         (
@@ -2725,7 +2725,7 @@ class Appeals(commands.Cog):
                 try:
                     log_embed = discord.Embed(
                         title="Manual Timeout Removal Detected",
-                        description=f"User {after.display_name} ({after.id}) had their timeout manually removed while having a pending appeal.",
+                        description=f"User {after.mention} had their timeout manually removed while having a pending appeal.",
                         color=APPEALS_TIMEOUT_END_COLOR,
                         timestamp=removal_time,
                     )
@@ -3116,12 +3116,12 @@ class Appeals(commands.Cog):
                             # Create log message
                             log_embed = discord.Embed(
                                 title="Manual Unban Detected",
-                                description=f"User {user.display_name} ({user.id}) was manually unbanned while having a pending appeal.",
+                                description=f"User {user.mention} was manually unbanned while having a pending appeal.",
                                 color=APPEALS_TIMEOUT_END_COLOR,
                             )
                             log_embed.add_field(
                                 name="Unbanned By",
-                                value=f"{entry.user.display_name} ({entry.user.id})"
+                                value=entry.user.mention
                                 if entry.user
                                 else "Unknown",
                                 inline=True,

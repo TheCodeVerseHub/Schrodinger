@@ -236,7 +236,7 @@ class ModCog(commands.Cog):
                 "Member Kicked", "kick",
                 user=member,
                 description=f"**{member}** was kicked from the server.",
-                fields={"User": f'{member.display_name} ({member.id})', "Reason": reason, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                fields={"User": member.mention, "Reason": reason, "Moderator": ctx.author.mention},
                 footer=f"User ID: {member.id}",
             )
             await self._safe_reply(ctx, view=view)
@@ -269,7 +269,7 @@ class ModCog(commands.Cog):
                 "Member Banned", "ban",
                 user=member,
                 description=f"**{member}** has been banned from the server.",
-                fields={"User": f'{member.display_name} ({member.id})', "Reason": reason, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                fields={"User": member.mention, "Reason": reason, "Moderator": ctx.author.mention},
             )
             await self._safe_reply(ctx, view=view)
 
@@ -304,7 +304,7 @@ class ModCog(commands.Cog):
             view = self._mod_action_card(
                 "Member Unbanned", "unban",
                 description=f"**{user}** has been unbanned.",
-                fields={"User": f'{user.display_name} ({user.id})', "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                fields={"User": user.mention, "Moderator": ctx.author.mention},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -342,7 +342,7 @@ class ModCog(commands.Cog):
                 "Member Softbanned", "kick",
                 user=user,
                 description=f"**{user}** was softbanned. Messages deleted, user can rejoin.",
-                fields={"User": f'{user.display_name} ({user.id})', "Reason": reason, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                fields={"User": user.mention, "Reason": reason, "Moderator": ctx.author.mention},
                 footer=f"User ID: {user.id}",
             )
             await self._safe_reply(ctx, view=view)
@@ -376,7 +376,7 @@ class ModCog(commands.Cog):
             view = self._mod_action_card(
                 "Messages Cleaned", "success",
                 description=f"Deleted **{len(deleted)}** bot/command messages from the last {count} messages.",
-                fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                fields={"Moderator": ctx.author.mention},
             )
             msg = await self._safe_reply(ctx, view=view)
             if msg:
@@ -400,16 +400,16 @@ class ModCog(commands.Cog):
                 await user.remove_roles(role, reason=f"Role toggle by {ctx.author}")
                 view = self._mod_action_card(
                     "Role Removed", "error",
-                    description=f"Removed {role.name} from {user.display_name}.",
-                    fields={"User": f'{user.display_name} ({user.id})', "Role": role.name, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                    description=f"Removed {role.mention} from {user.mention}.",
+                    fields={"User": user.mention, "Role": role.name, "Moderator": ctx.author.mention},
                 )
             else:
                 register_mod_action(self.bot, ctx.guild.id, user.id, ctx.author.id, f"Role toggle by {ctx.author}", "ROLE_ADD")
                 await user.add_roles(role, reason=f"Role toggle by {ctx.author}")
                 view = self._mod_action_card(
                     "Role Added", "success",
-                    description=f"Added {role.name} to {user.display_name}.",
-                    fields={"User": f'{user.display_name} ({user.id})', "Role": role.name, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                    description=f"Added {role.mention} to {user.mention}.",
+                    fields={"User": user.mention, "Role": role.name, "Moderator": ctx.author.mention},
                 )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -446,8 +446,8 @@ class ModCog(commands.Cog):
             await user.add_roles(role, reason=f"Promoted to Moderator by {ctx.author}")
             view = self._mod_action_card(
                 "Staff Addition", "info",
-                description=f"Successfully made {user.display_name} a staff member.",
-                fields={"User": f'{user.display_name} ({user.id})', "Role": role.name, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                description=f"Successfully made {user.mention} a staff member.",
+                fields={"User": user.mention, "Role": role.name, "Moderator": ctx.author.mention},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -525,12 +525,12 @@ class ModCog(commands.Cog):
                 user=member,
                 description=f"**{member}** has been timed out.",
                 fields={
-                    "User": f'{member.display_name} ({member.id})',
+                    "User": member.mention,
                     "Duration": duration,
                     "Expires": f"<t:{int(timeout_until.timestamp())}:F>",
                     "Reason": reason,
                     "Appeal": appeal_text,
-                    "Moderator": f'{ctx.author.display_name} ({ctx.author.id})',
+                    "Moderator": ctx.author.mention,
                 },
             )
             await self._safe_reply(ctx, view=view)
@@ -560,7 +560,7 @@ class ModCog(commands.Cog):
                 "Timeout Removed", "untimeout",
                 user=member,
                 description=f"Timeout removed from **{member}**.",
-                fields={"User": f'{member.display_name} ({member.id})', "Reason": reason, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                fields={"User": member.mention, "Reason": reason, "Moderator": ctx.author.mention},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -598,13 +598,13 @@ class ModCog(commands.Cog):
                 view = self._mod_action_card(
                     "Slowmode Disabled", "success",
                     description=f"Slowmode has been disabled in {ctx.channel.mention}.",
-                    fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                    fields={"Moderator": ctx.author.mention},
                 )
             else:
                 view = self._mod_action_card(
                     "Slowmode Enabled", "info",
                     description=f"Slowmode set to **{seconds}** seconds in {ctx.channel.mention}.",
-                    fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                    fields={"Moderator": ctx.author.mention},
                 )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -633,7 +633,7 @@ class ModCog(commands.Cog):
                 view = self._mod_action_card(
                     "Thread Locked", "info",
                     description=f"**{new_name}** has been locked.",
-                    fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                    fields={"Moderator": ctx.author.mention},
                 )
                 await self._safe_reply(ctx, view=view)
             except discord.Forbidden:
@@ -656,7 +656,7 @@ class ModCog(commands.Cog):
             view = self._mod_action_card(
                 "Channel Locked", "error",
                 description=f"{target_channel.mention} has been locked. Members cannot send messages.",
-                fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                fields={"Moderator": ctx.author.mention},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -685,7 +685,7 @@ class ModCog(commands.Cog):
                 view = self._mod_action_card(
                     "Thread Unlocked", "success",
                     description=f"**{new_name}** has been unlocked.",
-                    fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                    fields={"Moderator": ctx.author.mention},
                 )
                 await self._safe_reply(ctx, view=view)
             except discord.Forbidden:
@@ -708,7 +708,7 @@ class ModCog(commands.Cog):
             view = self._mod_action_card(
                 "Channel Unlocked", "success",
                 description=f"{target_channel.mention} has been unlocked.",
-                fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+                fields={"Moderator": ctx.author.mention},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -740,7 +740,7 @@ class ModCog(commands.Cog):
             desc += f"\n{failed_count} channels could not be locked."
         view = self._mod_action_card(
             "Server Lockdown", "error",
-            description=desc,            fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+            description=desc,            fields={"Moderator": ctx.author.mention},
         )
         await self._safe_reply(ctx, view=view)
 
@@ -774,7 +774,7 @@ class ModCog(commands.Cog):
         view = self._mod_action_card(
             "Lockdown Removed", "success",
             description=desc,
-            fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+            fields={"Moderator": ctx.author.mention},
         )
         await self._safe_reply(ctx, view=view)
 
@@ -885,7 +885,7 @@ class ModCog(commands.Cog):
             ),
             inline=False,
         )
-        embed.set_footer(text=f"Requested by {ctx.author.display_name} ({ctx.author.id})")
+        embed.set_footer(text=f"Requested by {ctx.author.mention}")
 
         # 9. Send the embed and add reaction buttons
         confirm_msg = await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
@@ -967,7 +967,7 @@ class ModCog(commands.Cog):
         success_embed.set_image(url="https://media.tenor.com/images/40f540506e13b53c2f44615a168923f8/tenor.gif")
         success_embed.add_field(
             name="Moderator",
-            value=f"{ctx.author.display_name} ({ctx.author.id})",
+            value=ctx.author.mention,
             inline=True,
         )
         success_embed.add_field(
@@ -1032,7 +1032,7 @@ class ModCog(commands.Cog):
         view = self._mod_action_card(
             "Mass Ban Complete", "ban",
             description="\n".join(lines),
-            fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+            fields={"Moderator": ctx.author.mention},
         )
         await self._safe_reply(ctx, view=view)
 
@@ -1058,10 +1058,10 @@ class ModCog(commands.Cog):
                 "Nickname Changed", "info",
                 user=member,
                 fields={
-                    "Member": f'{member.display_name} ({member.id})',
+                    "Member": member.mention,
                     "Old": old_nick,
                     "New": new_nick,
-                    "Moderator": f'{ctx.author.display_name} ({ctx.author.id})',
+                    "Moderator": ctx.author.mention,
                 },
             )
             await self._safe_reply(ctx, view=view)
@@ -1186,7 +1186,7 @@ class ModCog(commands.Cog):
         )
         
         # Basic info
-        embed.add_field(name="Name", value=role.name, inline=True)
+        embed.add_field(name="Name", value=role.mention, inline=True)
         embed.add_field(name="ID", value=f"`{role.id}`", inline=True)
         embed.add_field(name="Color", value=str(role.color), inline=True)
         
@@ -1395,7 +1395,7 @@ class ModCog(commands.Cog):
         
         embed = discord.Embed(
             title="Verification Panel",
-            description=f"Select a verification type for {target_member.display_name}:",
+            description=f"Select a verification type for {target_member.mention}:",
             color=0x5865F2
         )
         
@@ -1470,7 +1470,7 @@ class VerificationView(discord.ui.View):
         # Update the embed to show selection
         embed = discord.Embed(
             title="Verification Panel",
-            description=f"Selected: **{self.VERIFICATION_ROLES[self.selected_verification]['label']}** for {self.target_member.display_name}",
+            description=f"Selected: **{self.VERIFICATION_ROLES[self.selected_verification]['label']}** for {self.target_member.mention}",
             color=0x5865F2
         )
         
@@ -1521,7 +1521,7 @@ class VerificationView(discord.ui.View):
                 color=0x00FF00
             )
             embed.add_field(name="Verification Type", value=self.VERIFICATION_ROLES[self.selected_verification]["label"], inline=False)
-            embed.add_field(name="Verified By", value=f"{interaction.user.display_name} ({interaction.user.id})", inline=False)
+            embed.add_field(name="Verified By", value=interaction.user.mention, inline=False)
             embed.timestamp = datetime.now(timezone.utc)
             
             # Disable all components

@@ -150,11 +150,11 @@ class Warnings(commands.Cog):
                 # Send confirmation to moderator
                 view = _mod_card(
                     "Warning Issued", "warn",
-                    description=f"{user.display_name} has been warned.",
+                    description=f"{user.mention} has been warned.",
                     fields={
                         "Case ID": f"#{warn_obj.id}",
                         "Reason": reason,
-                        "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
+                        "Moderator": ctx.author.mention,
                         "DM Status": dm_status,
                     },
                     footer=f"User ID: {user.id}",
@@ -209,7 +209,7 @@ class Warnings(commands.Cog):
                     fields={
                         "Affected User": f"<@{warn_obj.user_id}>",
                         "Removal Reason": reason,
-                        "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
+                        "Moderator": ctx.author.mention,
                         "DM Status": dm_status,
                     },
                 )
@@ -295,7 +295,7 @@ class Warnings(commands.Cog):
                 if not warnings_list:
                     view = _mod_card(
                         "No Warnings", "unwarn",
-                        description=f"{user.display_name} has no warnings.",
+                        description=f"{user.mention} has no warnings.",
                     )
                     await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
                     return
@@ -372,7 +372,7 @@ class Warnings(commands.Cog):
                     fields={
                         "Affected User": f"<@{warn_obj.user_id}>",
                         "Revoke Reason": reason,
-                        "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
+                        "Moderator": ctx.author.mention,
                         "DM Status": dm_status,
                     },
                 )
@@ -416,10 +416,10 @@ class Warnings(commands.Cog):
 
                 view = _mod_card(
                     "Warnings Cleared", "unwarn",
-                    description=f"All warnings for {user.display_name} have been cleared.",
+                    description=f"All warnings for {user.mention} have been cleared.",
                     fields={
                         "Clear Reason": reason,
-                        "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
+                        "Moderator": ctx.author.mention,
                         "DM Status": dm_status,
                     },
                 )

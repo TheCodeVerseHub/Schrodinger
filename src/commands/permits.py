@@ -242,7 +242,7 @@ class PermitSystem(commands.Cog):
         conn.commit()
         conn.close()
         
-        embed = create_success_embed("Permit Added", f"Added **{role_name}** permit to {member.display_name}.")
+        embed = create_success_embed("Permit Added", f"Added **{role_name}** permit to {member.mention}.")
         await interaction.response.send_message(embed=embed)
 
     @permit_group.command(name="list")
@@ -354,7 +354,7 @@ class PermitSystem(commands.Cog):
         for role, perms in perm_map.items():
             desc += f"**{role}**: {', '.join(perms)}\n"
             
-        embed = discord.Embed(title=f"Permits for {member.display_name}", description=desc, color=0x00aaff)
+        embed = discord.Embed(title=f"Permits for {member.mention}", description=desc, color=0x00aaff)
         await interaction.response.send_message(embed=embed)
 
     async def _permit_role_autocomplete(
@@ -537,7 +537,7 @@ class PermitSystem(commands.Cog):
         user_entries: list[tuple[str, str]] = []  # (label, body)
         for user_id, roles in users.items():
             member = guild.get_member(user_id) if guild else None
-            label = member.display_name if member else f"<@{user_id}>"
+            label = member.mention if member else f"<@{user_id}>"
             body_parts = []
             for role, perms in sorted(roles.items()):
                 if perms:

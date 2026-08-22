@@ -136,7 +136,7 @@ class ThreadCloser(commands.Cog):
 
         embed = discord.Embed(
             title="Ticket Closed",
-            description=f"This ticket has been closed by {f"{ctx.author.display_name} ({ctx.author.id})"}",
+            description=f"This ticket has been closed by {ctx.author.mention}",
             color=0xFF0000,
         )
         embed.add_field(
@@ -277,7 +277,7 @@ class ThreadCloser(commands.Cog):
                 color=discord.Color.red(),
             )
             embed.add_field(name="Thread Name", value=thread.name, inline=False)
-            embed.add_field(name="Closed By", value=f"{ctx.author.display_name} ({ctx.author.id})", inline=True)
+            embed.add_field(name="Closed By", value=ctx.author.mention, inline=True)
             embed.set_footer(
                 text=f"Closed at {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
             )

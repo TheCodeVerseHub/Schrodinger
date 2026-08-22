@@ -32,8 +32,8 @@ def create_ban_embed(guild_name: str, reason: str) -> discord.Embed:
 def create_warning_embed(user: discord.Member, moderator: discord.Member, reason: str, points: int, total_points: int) -> discord.Embed:
     """Create embed for warning notification"""
     embed = discord.Embed(title='User Warning Issued', color=0xf39c12)
-    embed.add_field(name='User', value=f'{user.display_name} ({user.id})', inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='User', value=user.mention, inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     embed.add_field(name='Reason', value=reason, inline=False)
     embed.add_field(name='Points Added', value=str(points), inline=True)
     embed.add_field(name='Current Points', value=f'{total_points}/{MODERATION_POINT_CAP}', inline=True)
@@ -42,24 +42,24 @@ def create_warning_embed(user: discord.Member, moderator: discord.Member, reason
 def create_kick_embed(user: discord.Member, moderator: discord.Member, reason: str) -> discord.Embed:
     """Create embed for kick notification"""
     embed = discord.Embed(title='User Kicked', color=0xff0000)
-    embed.add_field(name='User', value=f'{user.display_name} ({user.id})', inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='User', value=user.mention, inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     embed.add_field(name='Reason', value=reason, inline=False)
     return embed
 
 def create_ban_action_embed(user: discord.Member, moderator: discord.Member, reason: str) -> discord.Embed:
     """Create embed for ban action notification"""
     embed = discord.Embed(title='User Banned', color=0xff0000)
-    embed.add_field(name='User', value=f'{user.display_name} ({user.id})', inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='User', value=user.mention, inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     embed.add_field(name='Reason', value=reason, inline=False)
     return embed
 
 def create_unban_embed(user: discord.User, moderator: discord.Member, reason: str) -> discord.Embed:
     """Create embed for unban notification"""
     embed = discord.Embed(title='User Unbanned', color=0x00ff00)
-    embed.add_field(name='User', value=f'{user.display_name} ({user.id})', inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='User', value=user.mention, inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     embed.add_field(name='Reason', value=reason, inline=False)
     return embed
 
@@ -67,37 +67,37 @@ def create_purge_embed(amount: int, moderator: discord.Member, target_user: disc
     """Create embed for purge notification"""
     embed = discord.Embed(title='Messages Purged', color=0x0000ff)
     embed.add_field(name='Amount', value=str(amount), inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     if target_user:
-        embed.add_field(name='Target User', value=f'{target_user.display_name} ({target_user.id})', inline=True)
+        embed.add_field(name='Target User', value=target_user.mention, inline=True)
     return embed
 
 def create_lockdown_embed(channel: discord.TextChannel, moderator: discord.Member) -> discord.Embed:
     """Create embed for lockdown notification"""
     embed = discord.Embed(title='Channel Locked', color=0xff0000)
-    embed.add_field(name='Channel', value=f'#{channel.name}', inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='Channel', value=channel.mention, inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     return embed
 
 def create_unlock_embed(channel: discord.TextChannel, moderator: discord.Member) -> discord.Embed:
     """Create embed for unlock notification"""
     embed = discord.Embed(title='Channel Unlocked', color=0x00ff00)
-    embed.add_field(name='Channel', value=f'#{channel.name}', inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='Channel', value=channel.mention, inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     return embed
 
 def create_slowmode_embed(channel: discord.TextChannel, moderator: discord.Member, seconds: int) -> discord.Embed:
     """Create embed for slowmode notification"""
     embed = discord.Embed(title='Slowmode Updated', color=0x0000ff)
-    embed.add_field(name='Channel', value=f'#{channel.name}', inline=True)
+    embed.add_field(name='Channel', value=channel.mention, inline=True)
     embed.add_field(name='Delay', value=f'{seconds} seconds', inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     return embed
 
 def create_points_check_embed(user: discord.Member, points: int) -> discord.Embed:
     """Create embed for points check"""
     embed = discord.Embed(title='Moderation Points', color=0x0000ff)
-    embed.add_field(name='User', value=f'{user.display_name} ({user.id})', inline=True)
+    embed.add_field(name='User', value=user.mention, inline=True)
     embed.add_field(name='Current Points', value=f'{points}/{MODERATION_POINT_CAP}', inline=True)
     status = 'Good Standing' if points < 50 else 'Warning' if points < 80 else 'Critical'
     embed.add_field(name='Status', value=status, inline=True)
@@ -106,9 +106,9 @@ def create_points_check_embed(user: discord.Member, points: int) -> discord.Embe
 def create_points_cleared_embed(user: discord.Member, moderator: discord.Member, old_points: int, reason: str) -> discord.Embed:
     """Create embed for points cleared notification"""
     embed = discord.Embed(title='Points Cleared', color=0x00ff00)
-    embed.add_field(name='User', value=f'{user.display_name} ({user.id})', inline=True)
+    embed.add_field(name='User', value=user.mention, inline=True)
     embed.add_field(name='Previous Points', value=str(old_points), inline=True)
-    embed.add_field(name='Moderator', value=f'{moderator.display_name} ({moderator.id})', inline=True)
+    embed.add_field(name='Moderator', value=moderator.mention, inline=True)
     embed.add_field(name='Reason', value=reason, inline=False)
     return embed
 

@@ -167,8 +167,8 @@ class Core(commands.Cog):
              return
 
         embed = discord.Embed(title=" User Report", color=discord.Color.red(), timestamp=datetime.now(timezone.utc))
-        embed.add_field(name="Reporter", value=f"{f"{reporter.display_name} ({reporter.id})"} ({reporter.id})", inline=False)
-        embed.add_field(name="Reported User", value=f"{f"{message.author.display_name} ({message.author.id})"} ({message.author.id})", inline=False)
+        embed.add_field(name="Reporter", value=f"{reporter.mention} ({reporter.id})", inline=False)
+        embed.add_field(name="Reported User", value=f"{message.author.mention} ({message.author.id})", inline=False)
         embed.add_field(name="Channel", value=f"{message.channel.mention}", inline=True)
         embed.add_field(name="Message Link", value=f"[Jump to Message]({message.jump_url})", inline=True)
         embed.add_field(name="Content", value=message.content[:1024] or "[No Content/Attachment]", inline=False)

@@ -141,13 +141,13 @@ def test_create_ban_embed():
 
 
 def test_create_warning_embed():
-    user = SimpleNamespace(display_name="TestUser", id=1)
-    mod = SimpleNamespace(display_name="ModUser", id=2)
+    user = SimpleNamespace(mention="<@1>", display_name="TestUser", id=1)
+    mod = SimpleNamespace(mention="<@2>", display_name="ModUser", id=2)
     embed = create_warning_embed(user, mod, "rule break", 2, 7)
     assert embed.title == "User Warning Issued"
     field_map = {f.name: f.value for f in embed.fields}
-    assert "TestUser" in field_map["User"]
-    assert "ModUser" in field_map["Moderator"]
+    assert field_map["User"] == "<@1>"
+    assert field_map["Moderator"] == "<@2>"
     assert field_map["Points Added"] == "2"
     assert field_map["Current Points"] == "7/100"
 

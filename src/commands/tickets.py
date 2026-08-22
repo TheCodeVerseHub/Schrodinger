@@ -895,7 +895,7 @@ class Tickets(commands.Cog):
         view = TicketControlView(self)
         staff_mention = staff_role.name if staff_role else "@Staff"
         welcome_msg = await ticket_channel.send(
-            content=f"Ticket by {user.display_name} ({user.id}) | Staff: {staff_role.name}",
+            content=f"{user.mention} | Staff: {staff_role.mention}",
             embed=embed,
             view=view,
             allowed_mentions=discord.AllowedMentions.none(),
@@ -998,7 +998,7 @@ class Tickets(commands.Cog):
 
         embed = discord.Embed(
             title="Ticket Closed",
-            description=f"This ticket has been closed by {interaction.user.display_name}",
+            description=f"This ticket has been closed by {interaction.user.mention}",
             color=0xFF0000,
         )
         embed.add_field(
@@ -1156,7 +1156,7 @@ class Tickets(commands.Cog):
 
         embed = discord.Embed(
             title="Ticket Claimed",
-            description=f"{interaction.user.display_name} is now handling this ticket.",
+            description=f"{interaction.user.mention} is now handling this ticket.",
             color=0x0000FF,
         )
         embed.timestamp = datetime.now(timezone.utc)
@@ -1333,7 +1333,7 @@ class Tickets(commands.Cog):
             color=colors.get(action, 0x95A5A6),
         )
         embed.add_field(name="Ticket ID", value=f"#{ticket_id}", inline=True)
-        embed.add_field(name="User", value=f"{user.display_name} ({user.id})", inline=True)
+        embed.add_field(name="User", value=user.mention, inline=True)
         embed.add_field(name="Channel", value=channel.mention, inline=True)
 
         if category:
@@ -1610,7 +1610,7 @@ class Tickets(commands.Cog):
         conn.close()
         await ctx.send(
             embed=create_success_embed(
-                "Support Role Set", f"Support role set to {role.name}"
+                "Support Role Set", f"Support role set to {role.mention}"
             ),
             ephemeral=True,
         )
@@ -1675,7 +1675,7 @@ class Tickets(commands.Cog):
         conn.close()
         await ctx.send(
             embed=create_success_embed(
-                "Report Role Set", f"Report role set to {role.name}"
+                "Report Role Set", f"Report role set to {role.mention}"
             ),
             ephemeral=True,
         )
@@ -1740,7 +1740,7 @@ class Tickets(commands.Cog):
         conn.close()
         await ctx.send(
             embed=create_success_embed(
-                "Partner Role Set", f"Partner role set to {role.name}"
+                "Partner Role Set", f"Partner role set to {role.mention}"
             ),
             ephemeral=True,
         )
@@ -1998,7 +1998,7 @@ class Tickets(commands.Cog):
             embed.add_field(
                 name="Ticket Owner", value=f"<@{user_id}> ({user_id})", inline=True
             )
-            embed.add_field(name="Closed By", value=f"{ctx.author.display_name} ({ctx.author.id})", inline=True)
+            embed.add_field(name="Closed By", value=ctx.author.mention, inline=True)
             embed.add_field(name="Category", value=str(category).title(), inline=True)
             embed.add_field(name="Reason", value=reason, inline=False)
             if ticket_channel:
@@ -2013,7 +2013,7 @@ class Tickets(commands.Cog):
                     embed=discord.Embed(
                         title="Ticket Force Closed",
                         description=(
-                            f"This ticket has been force closed by {f"{ctx.author.display_name} ({ctx.author.id})"}.\n"
+                            f"This ticket has been force closed by {ctx.author.mention}.\n"
                             "A transcript has been saved and this channel will stay visible for 24 hours before deletion."
                         ),
                         color=0xFF0000,

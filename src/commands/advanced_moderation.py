@@ -210,7 +210,7 @@ class AdvancedModeration(commands.Cog):
                     "Duration": f"{duration} minutes",
                     "Expires": f"<t:{int(unban_at)}:F>",
                     "Reason": reason,
-                    "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
+                    "Moderator": ctx.author.mention,
                 },
             )
             await safe_send(ctx, view=view)
@@ -272,7 +272,7 @@ class AdvancedModeration(commands.Cog):
             view = self._mod_action_card(
                 "Channel Hidden", "info",
                 description=f"**{resolved_channel.name}** has been hidden from everyone.",
-                fields={"Channel": resolved_channel.mention, "Moderator": f"{ctx.author.display_name} ({ctx.author.id})"},
+                fields={"Channel": resolved_channel.mention, "Moderator": ctx.author.mention},
             )
             await safe_send(ctx, view=view)
             logging_cog = self.bot.get_cog("LoggingCog")
@@ -302,7 +302,7 @@ class AdvancedModeration(commands.Cog):
             view = self._mod_action_card(
                 "Channel Unhidden", "success",
                 description=f"**{resolved_channel.name}** is now visible to everyone.",
-                fields={"Channel": resolved_channel.mention, "Moderator": f"{ctx.author.display_name} ({ctx.author.id})"},
+                fields={"Channel": resolved_channel.mention, "Moderator": ctx.author.mention},
             )
             await safe_send(ctx, view=view)
             logging_cog = self.bot.get_cog("LoggingCog")

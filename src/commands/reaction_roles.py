@@ -224,7 +224,7 @@ class ReactionRoles(commands.Cog):
                     # Check if bot can assign this role
                     if roles[i].position >= bot_member.top_role.position:
                         await interaction.followup.send(
-                            f"<:redtick:1529045360742502481> I cannot assign the role **{roles[i].name}** because it's higher than my highest role!", 
+                            f"<:redtick:1529045360742502481> I cannot assign the role {roles[i].mention} because it's higher than my highest role!", 
                             ephemeral=True
                         )
                         return
