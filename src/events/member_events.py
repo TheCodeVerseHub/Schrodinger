@@ -86,7 +86,7 @@ def build_welcome_view(member: discord.Member) -> WelcomeView:
         f"> <#{INTRODUCTION_CHANNEL_ID}> - Introduce yourself to the community\n"
         f"> <#{WELCOME_ROLES_CHANNEL_ID}> - Pick up your roles\n"
         f"> <#{WELCOME_GENERAL_CHANNEL_ID}> - Join the conversation\n"
-        f"> <#{WELCOME_IDEAS_CHANNEL_ID}> - Share ideas and suggestions\n"
+        f"> <#{WELCOME_IDEAS_CHANNEL_ID}> - Share what you are working on, ideas and suggestions\n"
         f"> <#{HELP_FORUM_ID}> - Ask for help from the team or experienced members\n"
         f"> <#{WELCOME_TICKET_CHANNEL_ID}> - Contact support via a ticket"
     ))

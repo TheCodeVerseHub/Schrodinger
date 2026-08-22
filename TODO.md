@@ -1,1 +1,4 @@
 - make a command to mute+warn at same time ?sybau ig.
+- add emojis to bot in dev discord portal
+- use those emojis soemhwere in bot
+- make some embeds black colored without any title just a descreiption like "unauthised access" ones
