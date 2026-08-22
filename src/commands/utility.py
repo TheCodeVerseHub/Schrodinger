@@ -484,6 +484,13 @@ class EmbedBuilder(commands.Cog):
     @ls_command.command(name="noroles")
     async def ls_noroles(self, ctx):
         """Show all users in the server who have no roles (no role at all)."""
+        # Ensure member cache is fully populated by fetching from API
+        try:
+            async for _member in ctx.guild.fetch_members(limit=None):
+                pass  # Populates the cache as a side-effect
+        except Exception:
+            pass  # Fall back to whatever is cached
+
         no_role_members = [
             m for m in ctx.guild.members if len(m.roles) == 1  # only @everyone
         ]

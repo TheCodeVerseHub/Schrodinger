@@ -38,9 +38,34 @@ MODERATION_CARD_COLORS = {
 
 class LogFormatter:
     """Handles formatting of log events into Embeds, text or V2 cards"""
-    
+
     def __init__(self, bot):
         self.bot = bot
+
+    async def _resolve_user(self, user_id: int, guild_id: Optional[int] = None) -> Any:
+        """Resolve a user ID to a discord.Member or discord.User.
+
+        Prefers guild.fetch_member (returns Member with proper .mention)
+        over bot.fetch_user (returns User without guild mention).
+        """
+        if not user_id:
+            return None
+        # Try guild member first (has proper .mention)
+        if guild_id:
+            guild = self.bot.get_guild(guild_id)
+            if guild:
+                member = guild.get_member(user_id)
+                if member:
+                    return member
+                try:
+                    return await guild.fetch_member(user_id)
+                except (discord.NotFound, discord.HTTPException, discord.Forbidden):
+                    pass
+        # Fallback to User object (no guild mention)
+        try:
+            return await self.bot.fetch_user(user_id)
+        except Exception:
+            return f"Unknown User ({user_id})"
 
     async def create_log_embed(self, log_item: Dict[str, Any]) -> Optional[discord.Embed]:
         """Create an appropriate embed for the log item"""
@@ -60,23 +85,18 @@ class LogFormatter:
         user_id = log_item.get("user_id")
         details = log_item.get("details", "")
         moderator_id = log_item.get("moderator_id")
+        guild_id = log_item.get("guild_id")
         timestamp = log_item.get("timestamp", datetime.now(timezone.utc))
-        
+
         # Resolve user and moderator objects
         user: Any = None
         moderator: Any = None
-        
+
         if user_id:
-            try:
-                user = await self.bot.fetch_user(user_id)
-            except:
-                user = f"Unknown User ({user_id})"
-        
+            user = await self._resolve_user(user_id, guild_id)
+
         if moderator_id:
-            try:
-                moderator = await self.bot.fetch_user(moderator_id)
-            except:
-                moderator = f"Unknown Moderator ({moderator_id})"
+            moderator = await self._resolve_user(moderator_id, guild_id)
         
         # Base embed with timestamp
         embed = discord.Embed(timestamp=timestamp)
@@ -440,19 +460,14 @@ class LogFormatter:
         user_id = log_item.get("user_id")
         details = log_item.get("details", "")
         moderator_id = log_item.get("moderator_id")
+        guild_id = log_item.get("guild_id")
 
         user: Any = None
         moderator: Any = None
         if user_id:
-            try:
-                user = await self.bot.fetch_user(user_id)
-            except Exception:
-                user = f"Unknown User ({user_id})"
+            user = await self._resolve_user(user_id, guild_id)
         if moderator_id:
-            try:
-                moderator = await self.bot.fetch_user(moderator_id)
-            except Exception:
-                moderator = f"Unknown Moderator ({moderator_id})"
+            moderator = await self._resolve_user(moderator_id, guild_id)
 
         # Title + accent per event (mirrors the classic embed semantics).
         if event_type.startswith("BAN"):
