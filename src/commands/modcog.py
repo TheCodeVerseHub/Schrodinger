@@ -1314,11 +1314,11 @@ class ModCog(commands.Cog):
             owner_mention = "Unknown"
             owner_display = "Unknown"
         else:
-            owner_mention = f'{owner.display_name} ({owner.id})'
+            owner_mention = owner.mention
             owner_display = str(owner)
         embed.add_field(
             name="Server Owner",
-            value=f"{owner.display_name} ({owner.id})",
+            value=f"{owner.mention}\n{owner_display}" if owner else "Unknown",
             inline=True
         )
         

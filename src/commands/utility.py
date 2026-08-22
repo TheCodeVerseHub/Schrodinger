@@ -796,7 +796,7 @@ class EmbedBuilder(commands.Cog):
         if view_roles:
             sections.append("### Roles (Explicit Allow)")
             for r in sorted(view_roles, key=lambda r: r.position, reverse=True):
-                sections.append(f"• {r.name}")
+                sections.append(f"• {r.mention}")
 
         if view_users:
             # Show explicit + inherited together
@@ -808,7 +808,7 @@ class EmbedBuilder(commands.Cog):
         if deny_roles:
             sections.append("### Roles (Explicit Deny)")
             for r in sorted(deny_roles, key=lambda r: r.position, reverse=True):
-                sections.append(f"• {r.name}")
+                sections.append(f"• {r.mention}")
 
         if deny_users:
             sections.append("### Users (Explicit Deny)")
