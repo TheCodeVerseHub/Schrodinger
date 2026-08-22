@@ -59,11 +59,11 @@ Commands are hybrid unless marked **(prefix only)** or **(slash only)**.
 | `/timeout` • `?timeout` (`?mute` alias) | Timeout a member (`10m`, `2h`, `1d`); `?mute` is prefix-only | Moderate Members |
 | `/untimeout` • `?untimeout` (`?unmute` alias) | Remove a timeout; `?unmute` is prefix-only | Moderate Members |
 | `/slowmode` • `?slowmode` | View/set slowmode (0–21600s) | Manage Channels |
-| `/lock` • `?lock` | Lock a channel or thread | Manage Channels |
+| `/lock` • `?lock` | Lock a channel or thread (renames with lock emoji) | Manage Channels |
 | `/unlock` • `?unlock` | Unlock a channel or thread | Manage Channels |
 | `/lockdown` • `?lockdown` | Lock all channels | Administrator |
 | `/unlockdown` • `?unlockdown` | Unlock all channels | Administrator |
-| `/nuke` • `?nuke` | Clone + delete a channel (clears messages) | Bot Owner |
+| `/nuke` • `?nuke` | Clone + delete a channel with reaction confirmation | Bot Owner |
 | `/massban` • `?massban` | Ban multiple users by ID | Bot Owner |
 | `/nickname` • `?nickname` | Change a member's nickname | Manage Nicknames |
 | `/verify` | Verification panel with role selection | Admin bypass role / Administrator |
@@ -76,7 +76,7 @@ Commands are hybrid unless marked **(prefix only)** or **(slash only)**.
 | Command | Description | Permission |
 |---------|-------------|-----------|
 | `/tempban` • `?tempban` | Temporarily ban a member | Ban Members |
-| `?hide` **(prefix only)** | Hide a channel from @everyone | Manage Channels |
+| `?hide` **(prefix only)** | Hide a channel from everyone | Manage Channels |
 | `?unhide` **(prefix only)** | Unhide a channel | Manage Channels |
 
 ---
@@ -227,7 +227,7 @@ Commands are hybrid unless marked **(prefix only)** or **(slash only)**.
 
 | Command | Description |
 |---------|-------------|
-| `?r1` … `?r12` | Post a specific server rule |
+| `?r1` … `?r13` | Post a specific server rule |
 | `?r34` | Post the extra rule |
 | `?tldr` | TL;DR of the rules |
 

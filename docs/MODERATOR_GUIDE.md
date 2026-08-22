@@ -298,9 +298,9 @@ Lock a channel to prevent members from sending messages.
 - `?lock Channel maintenance`
 
 **What happens:**
+- Thread is renamed with a lock emoji (🔒) prefix
 - @everyone role loses Send Messages permission
 - Moderators can still send messages
-- Announcement posted in channel
 - Action is logged
 
 ---

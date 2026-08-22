@@ -71,11 +71,11 @@ This document provides a comprehensive list of all commands available in the Cod
 | `/timeout`, `?timeout` (alias `?mute`) | Timeout a member for a duration (`10m`, `2h`, `1d`). Slash: add `appeal:False` for non-appealable. Prefix: add `?a` tag to reason. | `/timeout <member> <duration> [reason] [appeal]` | Moderate Members |
 | `/untimeout`, `?untimeout` (alias `?unmute`) | Remove a timeout from a member; `?unmute` is a prefix-only alias of `/untimeout` | `/untimeout <member> [reason]` | Moderate Members |
 | `/slowmode`, `?slowmode` | View or set slowmode (0–21600s) | `/slowmode [seconds]` | Manage Channels |
-| `/lock`, `?lock` | Lock a channel or thread | `/lock [channel]` | Manage Channels |
+| `/lock`, `?lock` | Lock a channel or thread (renames with lock emoji) | `/lock [channel]` | Manage Channels |
 | `/unlock`, `?unlock` | Unlock a previously locked channel or thread | `/unlock [channel]` | Manage Channels |
 | `/lockdown`, `?lockdown` | Lock all channels in the server | `/lockdown` | Administrator |
 | `/unlockdown`, `?unlockdown` | Unlock all previously locked channels | `/unlockdown` | Administrator |
-| `/nuke`, `?nuke` | Clone and delete a channel to clear all messages | `/nuke [channel]` | Bot Owner |
+| `/nuke`, `?nuke` | Clone and delete a channel to clear all messages (reaction-based confirmation) | `/nuke [channel]` | Bot Owner |
 | `/massban`, `?massban` | Ban multiple users by ID (max 50) | `/massban <user_ids> [reason]` | Bot Owner |
 | `/nickname`, `?nickname` | Change a member's nickname | `/nickname <member> [nickname]` | Manage Nicknames |
 | `/verify` | Open a verification panel for a member | `/verify <member>` | Admin bypass role or Administrator |
@@ -86,8 +86,8 @@ This document provides a comprehensive list of all commands available in the Cod
 | Command | Description | Usage | Permission |
 |---------|-------------|-------|------------|
 | `/tempban`, `?tempban` | Temporarily ban a member | `/tempban <member> <duration> [reason]` | Ban Members |
-| `?hide` | Hide a channel from @everyone (prefix only) | `?hide [channel]` | Manage Channels |
-| `?unhide` | Unhide a channel for @everyone (prefix only) | `?unhide [channel]` | Manage Channels |
+| `?hide` | Hide a channel from everyone (prefix only) | `?hide [channel]` | Manage Channels |
+| `?unhide` | Unhide a channel for everyone (prefix only) | `?unhide [channel]` | Manage Channels |
 
 ### Information Commands
 **Source:** `src/commands/modcog.py`
@@ -247,7 +247,7 @@ Default log destinations are configured in `.env` (`LOG_CHANNEL_*_ID` variables)
 
 | Command | Description |
 |---------|-------------|
-| `?r1` … `?r12` | Post a specific server rule |
+| `?r1` … `?r13` | Post a specific server rule |
 | `?r34` | Post the extra rule |
 | `?tldr` | Post the TL;DR summary of the rules |
 
