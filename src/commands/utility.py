@@ -419,7 +419,7 @@ class EmbedBuilder(commands.Cog):
             await ctx.send("No cosmetic-only roles found.", allowed_mentions=discord.AllowedMentions.none())
             return
 
-        lines = [f"{r.name} (Pos: {r.position})" for r in roles]
+        lines = [r.mention for r in roles]
         await _ls_send(
             ctx,
             _ls_container(
@@ -471,7 +471,7 @@ class EmbedBuilder(commands.Cog):
             await ctx.send("No roles with permissions found (unlikely).", allowed_mentions=discord.AllowedMentions.none())
             return
 
-        lines = [f"{r.name} (Pos: {r.position})" for r in roles]
+        lines = [r.mention for r in roles]
         await _ls_send(
             ctx,
             _ls_container(
