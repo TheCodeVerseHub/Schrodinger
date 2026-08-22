@@ -332,7 +332,7 @@ class EmbedBuilder(commands.Cog):
             lines = []
             empty_text = "No members have this role."
         elif count <= 50:
-            lines = [f"{member.display_name} ({member.id})" for member in role.members]
+            lines = [member.mention for member in role.members]
             empty_text = None
         else:
             lines = []
@@ -389,7 +389,7 @@ class EmbedBuilder(commands.Cog):
         for role in roles_with_perm:
             # Mark if it's via admin or direct
             note = " (Admin)" if role.permissions.administrator and matched_perm != "administrator" else ""
-            lines.append(f"{role.name}{note}")
+            lines.append(f"{role.mention}{note}")
 
         await _ls_send(
             ctx,
@@ -507,7 +507,7 @@ class EmbedBuilder(commands.Cog):
             )
             return
 
-        lines = [f"{m.display_name} ({m.id})" for m in sorted(no_role_members, key=lambda m: m.display_name.lower())]
+        lines = [m.mention for m in sorted(no_role_members, key=lambda m: m.display_name.lower())]
         await _ls_send(
             ctx,
             _ls_container(
@@ -800,7 +800,7 @@ class EmbedBuilder(commands.Cog):
 
         if view_users:
             # Show explicit + inherited together
-            mention_list = [f"{m.display_name}" for m in sorted(all_view, key=lambda m: m.display_name.lower())]
+            mention_list = [m.mention for m in sorted(all_view, key=lambda m: m.display_name.lower())]
             sections.append(f"### Users ({len(all_view)})")
             for chunk in _ls_chunk_lines(mention_list, max_chars=1200):
                 sections.append(chunk)
@@ -813,7 +813,7 @@ class EmbedBuilder(commands.Cog):
         if deny_users:
             sections.append("### Users (Explicit Deny)")
             for m in sorted(deny_users, key=lambda m: m.display_name.lower()):
-                sections.append(f"• {m.display_name}")
+                sections.append(f"• {m.mention}")
 
         if not sections:
             # Nobody has explicit overwrites; fall back to inheritance info
@@ -970,7 +970,7 @@ class EmbedBuilder(commands.Cog):
     async def ls_bots(self, ctx):
         """List all bots in the server"""
         bots = [m for m in ctx.guild.members if m.bot]
-        lines = [f"{b.display_name} ({b.id}) - {b.top_role.name if b.top_role else 'No Role'}" for b in bots]
+        lines = [f"{b.mention} ({b.id}) - {b.top_role.mention if b.top_role else 'No Role'}" for b in bots]
         await _ls_send(
             ctx,
             _ls_container(
@@ -1005,7 +1005,7 @@ class EmbedBuilder(commands.Cog):
                 timestamp = f"<t:{int(member.premium_since.timestamp())}:R>"
             else:
                 timestamp = "Unknown time"
-            lines.append(f"• {member.display_name} - {timestamp}")
+            lines.append(f"• {member.mention} - {timestamp}")
 
         await _ls_send(
             ctx,

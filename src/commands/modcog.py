@@ -1115,7 +1115,7 @@ class ModCog(commands.Cog):
             
             # Roles
             if len(target_user.roles) > 1:
-                roles = [role.name for role in reversed(target_user.roles[1:])][:20]
+                roles = [role.mention for role in reversed(target_user.roles[1:])][:20]
                 embed.add_field(
                     name=f"Roles [{len(target_user.roles) - 1}]",
                     value=" ".join(roles) if roles else "None",
@@ -1133,7 +1133,7 @@ class ModCog(commands.Cog):
             
             # Highest role
             if target_user.top_role != ctx.guild.default_role:
-                embed.add_field(name="⬆Highest Role", value=target_user.top_role.name, inline=True)
+                embed.add_field(name="⬆Highest Role", value=target_user.top_role.mention, inline=True)
             
             # Boost status
             if target_user.premium_since:
