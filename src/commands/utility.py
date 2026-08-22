@@ -332,7 +332,7 @@ class EmbedBuilder(commands.Cog):
             lines = []
             empty_text = "No members have this role."
         elif count <= 50:
-            lines = [member.mention for member in role.members]
+            lines = [f"{member.display_name} ({member.id})" for member in role.members]
             empty_text = None
         else:
             lines = []
@@ -369,9 +369,9 @@ class EmbedBuilder(commands.Cog):
             # Fuzzy-ish fallback
             matches = [p for p in valid_perms if not p.startswith("_") and query in p]
             if matches:
-                 await ctx.send(f"Permission `{perm_query}` not found. Did you mean: {', '.join(matches[:5])}?")
+                 await ctx.send(f"Permission `{perm_query}` not found. Did you mean: {', '.join(matches[:5])}?", allowed_mentions=discord.AllowedMentions.none())
             else:
-                 await ctx.send(f"Permission `{perm_query}` not found.")
+                 await ctx.send(f"Permission `{perm_query}` not found.", allowed_mentions=discord.AllowedMentions.none())
             return
 
         # Find roles
@@ -389,7 +389,7 @@ class EmbedBuilder(commands.Cog):
         for role in roles_with_perm:
             # Mark if it's via admin or direct
             note = " (Admin)" if role.permissions.administrator and matched_perm != "administrator" else ""
-            lines.append(f"{role.mention}{note}")
+            lines.append(f"{role.name}{note}")
 
         await _ls_send(
             ctx,
@@ -416,10 +416,10 @@ class EmbedBuilder(commands.Cog):
         roles.sort(key=lambda r: r.position, reverse=True)
 
         if not roles:
-            await ctx.send("No cosmetic-only roles found.")
+            await ctx.send("No cosmetic-only roles found.", allowed_mentions=discord.AllowedMentions.none())
             return
 
-        lines = [f"{r.mention} (Pos: {r.position})" for r in roles]
+        lines = [f"{r.name} (Pos: {r.position})" for r in roles]
         await _ls_send(
             ctx,
             _ls_container(
@@ -442,7 +442,7 @@ class EmbedBuilder(commands.Cog):
                     perms.append(perm.replace('_', ' ').title())
 
             if not perms:
-                await ctx.send(f"{role.mention} has no active permissions.", allowed_mentions=discord.AllowedMentions.none())
+                await ctx.send(f"{role.name} has no active permissions.", allowed_mentions=discord.AllowedMentions.none())
                 return
 
             perms.sort()
@@ -468,10 +468,10 @@ class EmbedBuilder(commands.Cog):
         roles.sort(key=lambda r: r.position, reverse=True)
 
         if not roles:
-            await ctx.send("No roles with permissions found (unlikely).")
+            await ctx.send("No roles with permissions found (unlikely).", allowed_mentions=discord.AllowedMentions.none())
             return
 
-        lines = [f"{r.mention} (Pos: {r.position})" for r in roles]
+        lines = [f"{r.name} (Pos: {r.position})" for r in roles]
         await _ls_send(
             ctx,
             _ls_container(
@@ -507,12 +507,12 @@ class EmbedBuilder(commands.Cog):
             )
             return
 
-        lines = [f"{m.mention} ({m.id})" for m in sorted(no_role_members, key=lambda m: m.display_name.lower())]
+        lines = [f"{m.display_name} ({m.id})" for m in sorted(no_role_members, key=lambda m: m.display_name.lower())]
         await _ls_send(
             ctx,
             _ls_container(
                 "Users with No Roles",
-                "These members only have the @everyone role.",
+                "These members only have the everyone role.",
                 lines,
                 footer=f"Total: {len(no_role_members)} user{'s' if len(no_role_members) != 1 else ''}",
             ),
@@ -559,7 +559,7 @@ class EmbedBuilder(commands.Cog):
                         try:
                             target = await commands.MemberConverter().convert(ctx, target_str)
                         except commands.BadArgument:
-                            await ctx.send(f"Could not find a role or member named `{target_str}`. Check the spelling or use a mention or ID instead.")
+                            await ctx.send(f"Could not find a role or member named `{target_str}`. Check the spelling or use a mention or ID instead.", allowed_mentions=discord.AllowedMentions.none())
                             return
 
                 # Resolve Permission
@@ -631,7 +631,7 @@ class EmbedBuilder(commands.Cog):
                         # e.g. "ban" matches "ban_members"
                         perm_attr = matches[0]
                     else:
-                        await ctx.send(f"Invalid permission `{perm_str}`. Use ?ls perm to see available permission names.")
+                        await ctx.send(f"Invalid permission `{perm_str}`. Use ?ls perm to see available permission names.", allowed_mentions=discord.AllowedMentions.none())
                         return
 
                 # Filter Channels
@@ -649,7 +649,7 @@ class EmbedBuilder(commands.Cog):
                 matched.sort(key=lambda c: c.position)
 
                 if not matched:
-                    await ctx.send(f"🚫 No channels found where {target.mention} has `{perm_attr}` permission.")
+                    await ctx.send(f"🚫 No channels found where {target.display_name} has `{perm_attr}` permission.", allowed_mentions=discord.AllowedMentions.none())
                     return
 
                 # Build list text
@@ -658,14 +658,14 @@ class EmbedBuilder(commands.Cog):
                     ctx,
                     _ls_container(
                         f"Channel Audit: {perm_attr}",
-                        f"Showing channels where **{target.mention}** can `{perm_attr}`.",
+                        f"Showing channels where **{target.display_name}** can `{perm_attr}`.",
                         lines,
                         empty_text="No channels found.",
                     ),
                 )
 
             except Exception as e:
-                await ctx.send(f"Error parsing arguments: {str(e)}\nUsage: `?ls channels ?w Everyone SendMessage`")
+                await ctx.send(f"Error parsing arguments: {str(e)}\nUsage: `?ls channels ?w Everyone SendMessage`", allowed_mentions=discord.AllowedMentions.none())
             return
 
         # Default: List all channels grouped by category
@@ -720,7 +720,7 @@ class EmbedBuilder(commands.Cog):
         # Extract channel mention or ID after ?v
         params = full_args.split("?v", 1)[1].strip()
         if not params:
-            await ctx.send("Please provide a channel after ?v. Example: ?ls channels ?v #general")
+            await ctx.send("Please provide a channel after ?v. Example: ?ls channels ?v #general", allowed_mentions=discord.AllowedMentions.none())
             return
 
         channel_str = params.strip()
@@ -732,7 +732,8 @@ class EmbedBuilder(commands.Cog):
             channel = await commands.TextChannelConverter().convert(ctx, channel_str)
         except commands.BadArgument:
             await ctx.send(
-                f"Could not find a text channel named `{channel_str}`. Check the channel name or use a channel mention instead."
+                f"Could not find a text channel named `{channel_str}`. Check the channel name or use a channel mention instead.",
+                allowed_mentions=discord.AllowedMentions.none(),
             )
             return
 
@@ -795,11 +796,11 @@ class EmbedBuilder(commands.Cog):
         if view_roles:
             sections.append("### Roles (Explicit Allow)")
             for r in sorted(view_roles, key=lambda r: r.position, reverse=True):
-                sections.append(f"• {r.mention}")
+                sections.append(f"• {r.name}")
 
         if view_users:
             # Show explicit + inherited together
-            mention_list = [m.mention for m in sorted(all_view, key=lambda m: m.display_name.lower())]
+            mention_list = [f"{m.display_name}" for m in sorted(all_view, key=lambda m: m.display_name.lower())]
             sections.append(f"### Users ({len(all_view)})")
             for chunk in _ls_chunk_lines(mention_list, max_chars=1200):
                 sections.append(chunk)
@@ -807,21 +808,21 @@ class EmbedBuilder(commands.Cog):
         if deny_roles:
             sections.append("### Roles (Explicit Deny)")
             for r in sorted(deny_roles, key=lambda r: r.position, reverse=True):
-                sections.append(f"• {r.mention}")
+                sections.append(f"• {r.name}")
 
         if deny_users:
             sections.append("### Users (Explicit Deny)")
             for m in sorted(deny_users, key=lambda m: m.display_name.lower()):
-                sections.append(f"• {m.mention}")
+                sections.append(f"• {m.display_name}")
 
         if not sections:
             # Nobody has explicit overwrites; fall back to inheritance info
             if everyone_view_allowed:
                 sections.append(
-                    f"*No explicit overwrites. **{ctx.guild.member_count}** members can view via @everyone.*"
+                    f"*No explicit overwrites. **{ctx.guild.member_count}** members can view via everyone.*"
                 )
             else:
-                sections.append("*No one can view this channel (view denied at @everyone level).*")
+                sections.append("*No one can view this channel (view denied at everyone level).*")
 
         await _ls_send(
             ctx,
@@ -864,7 +865,7 @@ class EmbedBuilder(commands.Cog):
                         try:
                             target = await commands.MemberConverter().convert(ctx, target_str)
                         except commands.BadArgument:
-                            await ctx.send(f"Could not find a role or member named `{target_str}`. Check the spelling or use a mention or ID instead.")
+                            await ctx.send(f"Could not find a role or member named `{target_str}`. Check the spelling or use a mention or ID instead.", allowed_mentions=discord.AllowedMentions.none())
                             return
 
                 # Resolve Permission
@@ -921,7 +922,7 @@ class EmbedBuilder(commands.Cog):
                     if matches:
                         perm_attr = matches[0]
                     else:
-                        await ctx.send(f"Invalid permission `{perm_str}`. Use ?ls perm to see available permission names.")
+                        await ctx.send(f"Invalid permission `{perm_str}`. Use ?ls perm to see available permission names.", allowed_mentions=discord.AllowedMentions.none())
                         return
 
                 # Filter Categories
@@ -934,7 +935,7 @@ class EmbedBuilder(commands.Cog):
                 matched.sort(key=lambda c: c.position)
 
                 if not matched:
-                    await ctx.send(f"🚫 No categories found where {target.mention} has `{perm_attr}` permission.")
+                    await ctx.send(f"🚫 No categories found where {target.display_name} has `{perm_attr}` permission.", allowed_mentions=discord.AllowedMentions.none())
                     return
 
                 lines = [f"{c.name.upper()} (`{c.id}`)" for c in matched]
@@ -942,14 +943,14 @@ class EmbedBuilder(commands.Cog):
                     ctx,
                     _ls_container(
                         f"Category Audit: {perm_attr}",
-                        f"Showing categories where **{target.mention}** can `{perm_attr}`.",
+                        f"Showing categories where **{target.display_name}** can `{perm_attr}`.",
                         lines,
                         empty_text="No categories found.",
                     ),
                 )
 
             except Exception as e:
-                await ctx.send(f"Error parsing arguments: {str(e)}")
+                await ctx.send(f"Error parsing arguments: {str(e)}", allowed_mentions=discord.AllowedMentions.none())
             return
 
         # Default: List all categories
@@ -969,7 +970,7 @@ class EmbedBuilder(commands.Cog):
     async def ls_bots(self, ctx):
         """List all bots in the server"""
         bots = [m for m in ctx.guild.members if m.bot]
-        lines = [f"{b.mention} {b.top_role.mention if b.top_role else ''}" for b in bots]
+        lines = [f"{b.display_name} ({b.id}) - {b.top_role.name if b.top_role else 'No Role'}" for b in bots]
         await _ls_send(
             ctx,
             _ls_container(
@@ -1004,7 +1005,7 @@ class EmbedBuilder(commands.Cog):
                 timestamp = f"<t:{int(member.premium_since.timestamp())}:R>"
             else:
                 timestamp = "Unknown time"
-            lines.append(f"• {member.mention} - {timestamp}")
+            lines.append(f"• {member.display_name} - {timestamp}")
 
         await _ls_send(
             ctx,

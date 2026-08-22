@@ -177,7 +177,7 @@ class StickyMessage(commands.Cog):
 
         guild = ctx.guild
         if guild is None:
-            await ctx.send("This command can only be used in a server, not in DMs.")
+            await ctx.send("This command can only be used in a server, not in DMs.", allowed_mentions=discord.AllowedMentions.none())
             return
 
         target_channel = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
@@ -187,11 +187,11 @@ class StickyMessage(commands.Cog):
                 description="This command can only be used in text channels.",
                 color=0xff0000
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return
 
         if not isinstance(ctx.author, discord.Member):
-            await ctx.send("This command can only be used by server members. Try using the slash command version instead.")
+            await ctx.send("This command can only be used by server members. Try using the slash command version instead.", allowed_mentions=discord.AllowedMentions.none())
             return
         
         # Check if user has permissions in the target channel
@@ -201,7 +201,7 @@ class StickyMessage(commands.Cog):
                 description=f"You don't have `Manage Messages` permission in {target_channel.mention}.",
                 color=0xff0000
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return
         
         # Check if bot has permissions in the target channel
@@ -212,12 +212,12 @@ class StickyMessage(commands.Cog):
                 description=f"I don't have permission to send messages in {target_channel.mention}.",
                 color=0xff0000
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return
         
         # Open the modal for creating sticky message
         if ctx.interaction is None:
-            await ctx.send("This feature requires a slash command interaction. Use the slash command version of this command instead.")
+            await ctx.send("This feature requires a slash command interaction. Use the slash command version of this command instead.", allowed_mentions=discord.AllowedMentions.none())
             return
 
         modal = StickyMessageModal(self, target_channel)
@@ -234,7 +234,7 @@ class StickyMessage(commands.Cog):
 
         guild = ctx.guild
         if guild is None:
-            await ctx.send("This command can only be used in a server, not in DMs.")
+            await ctx.send("This command can only be used in a server, not in DMs.", allowed_mentions=discord.AllowedMentions.none())
             return
 
         target_channel = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
@@ -244,11 +244,11 @@ class StickyMessage(commands.Cog):
                 description="This command can only be used in text channels.",
                 color=0xff0000
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return
 
         if not isinstance(ctx.author, discord.Member):
-            await ctx.send("This command can only be used by server members. Try using the slash command version instead.")
+            await ctx.send("This command can only be used by server members. Try using the slash command version instead.", allowed_mentions=discord.AllowedMentions.none())
             return
         
         # Check if user has permissions in the target channel
@@ -258,7 +258,7 @@ class StickyMessage(commands.Cog):
                 description=f"You don't have `Manage Messages` permission in {target_channel.mention}.",
                 color=0xff0000
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return
         
         try:
@@ -275,7 +275,7 @@ class StickyMessage(commands.Cog):
                     description=f"No sticky message found in {target_channel.mention}.",
                     color=0xff0000
                 )
-                await ctx.send(embed=embed)
+                await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
                 conn.close()
                 return
             
@@ -304,7 +304,7 @@ class StickyMessage(commands.Cog):
                 description=f"Sticky message has been removed from {target_channel.mention}.",
                 color=0x00ff00
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             
         except Exception as e:
             embed = discord.Embed(
@@ -312,7 +312,7 @@ class StickyMessage(commands.Cog):
                 description=f"Failed to remove sticky message: {str(e)}",
                 color=0xff0000
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.hybrid_command(name="liststicky")
     @commands.has_permissions(manage_messages=True)
@@ -322,7 +322,7 @@ class StickyMessage(commands.Cog):
         
         try:
             if ctx.guild is None:
-                await ctx.send("This command can only be used in a server, not in DMs.")
+                await ctx.send("This command can only be used in a server, not in DMs.", allowed_mentions=discord.AllowedMentions.none())
                 return
 
             conn = sqlite3.connect(DATABASE_NAME)
@@ -342,7 +342,7 @@ class StickyMessage(commands.Cog):
                     description="No sticky messages found in this server.",
                     color=0x0000ff
                 )
-                await ctx.send(embed=embed)
+                await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
                 return
             
             embed = discord.Embed(
@@ -367,7 +367,7 @@ class StickyMessage(commands.Cog):
             if len(results) > 10:
                 embed.set_footer(text=f"Showing first 10 of {len(results)} sticky messages")
             
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             
         except Exception as e:
             embed = discord.Embed(
@@ -375,7 +375,7 @@ class StickyMessage(commands.Cog):
                 description=f"Failed to list sticky messages: {str(e)}",
                 color=0xff0000
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.Cog.listener()
     async def on_message(self, message):

@@ -49,7 +49,7 @@ async def log_consumer(bot: commands.Bot, action: logging_api.LogAction):
         embed.add_field(name=field.name, value=field.value, inline=field.inline)
 
     if isinstance(log_channel, discord.TextChannel):
-        await log_channel.send(embed=embed)
+        await log_channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
 def connect_log_consumer(bot: commands.Bot):
     """

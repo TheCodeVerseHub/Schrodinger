@@ -156,6 +156,7 @@ class HelpThreadNotification(commands.Cog):
                     f"@here There's a New Help Forum(<#{self.source_forum_id}>), Do check if u can help"
                 ),
                 embed=embed,
+                allowed_mentions=discord.AllowedMentions(everyone=True, users=False, roles=False),
             )
             logger.info(
                 f"Manual help thread notification sent for thread {thread.id} by {ctx.author.id}"

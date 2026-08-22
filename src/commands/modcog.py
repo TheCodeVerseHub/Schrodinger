@@ -206,7 +206,8 @@ class ModCog(commands.Cog):
                 await self._safe_reply(ctx, f"Deleted {count} messages.")
             else:
                 msg = await ctx.send(
-                    f"Deleted {count} messages.\n-# This message will be deleted in 5 seconds"
+                    f"Deleted {count} messages.\n-# This message will be deleted in 5 seconds",
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
                 await msg.delete(delay=5)
         except discord.Forbidden:
@@ -235,7 +236,7 @@ class ModCog(commands.Cog):
                 "Member Kicked", "kick",
                 user=member,
                 description=f"**{member}** was kicked from the server.",
-                fields={"User": member.mention, "Reason": reason, "Moderator": ctx.author.mention},
+                fields={"User": f'{member.display_name} ({member.id})', "Reason": reason, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
                 footer=f"User ID: {member.id}",
             )
             await self._safe_reply(ctx, view=view)
@@ -268,7 +269,7 @@ class ModCog(commands.Cog):
                 "Member Banned", "ban",
                 user=member,
                 description=f"**{member}** has been banned from the server.",
-                fields={"User": member.mention, "User ID": f"`{member.id}`", "Reason": reason, "Moderator": ctx.author.mention},
+                fields={"User": f'{member.display_name} ({member.id})', "Reason": reason, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
             )
             await self._safe_reply(ctx, view=view)
 
@@ -303,7 +304,7 @@ class ModCog(commands.Cog):
             view = self._mod_action_card(
                 "Member Unbanned", "unban",
                 description=f"**{user}** has been unbanned.",
-                fields={"User": user.mention, "User ID": f"`{user.id}`", "Moderator": ctx.author.mention},
+                fields={"User": f'{user.display_name} ({user.id})', "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -341,7 +342,7 @@ class ModCog(commands.Cog):
                 "Member Softbanned", "kick",
                 user=user,
                 description=f"**{user}** was softbanned. Messages deleted, user can rejoin.",
-                fields={"User": user.mention, "Reason": reason, "Moderator": ctx.author.mention},
+                fields={"User": f'{user.display_name} ({user.id})', "Reason": reason, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
                 footer=f"User ID: {user.id}",
             )
             await self._safe_reply(ctx, view=view)
@@ -375,7 +376,7 @@ class ModCog(commands.Cog):
             view = self._mod_action_card(
                 "Messages Cleaned", "success",
                 description=f"Deleted **{len(deleted)}** bot/command messages from the last {count} messages.",
-                fields={"Moderator": ctx.author.mention},
+                fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
             )
             msg = await self._safe_reply(ctx, view=view)
             if msg:
@@ -392,37 +393,33 @@ class ModCog(commands.Cog):
     async def role(self, ctx: commands.Context, user: discord.Member, *, role: discord.Role):
         """Add or remove a role from a user"""
         assert ctx.guild is not None
-        
+
         try:
             if role in user.roles:
                 register_mod_action(self.bot, ctx.guild.id, user.id, ctx.author.id, f"Role toggle by {ctx.author}", "ROLE_REMOVE")
                 await user.remove_roles(role, reason=f"Role toggle by {ctx.author}")
-                
-                embed = discord.Embed(
-                    title="Role Removed",
-                    description=f"Removed {role.mention} from {user.mention}.",
-                    color=discord.Color.orange()
+                view = self._mod_action_card(
+                    "Role Removed", "error",
+                    description=f"Removed {role.name} from {user.display_name}.",
+                    fields={"User": f'{user.display_name} ({user.id})', "Role": role.name, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
                 )
             else:
                 register_mod_action(self.bot, ctx.guild.id, user.id, ctx.author.id, f"Role toggle by {ctx.author}", "ROLE_ADD")
                 await user.add_roles(role, reason=f"Role toggle by {ctx.author}")
-                
-                embed = discord.Embed(
-                    title="Role Added",
-                    description=f"Added {role.mention} to {user.mention}.",
-                    color=discord.Color.green()
+                view = self._mod_action_card(
+                    "Role Added", "success",
+                    description=f"Added {role.name} to {user.display_name}.",
+                    fields={"User": f'{user.display_name} ({user.id})', "Role": role.name, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
                 )
-            
-            embed.set_footer(text=f"Action by {ctx.author}")
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_ADD")
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_REMOVE")
-            await ctx.send("I'm missing the 'Manage Roles' permission. Ask an admin to grant me that permission in Server Settings > Roles.")
+            await self._safe_reply(ctx, "I'm missing the 'Manage Roles' permission. Ask an admin to grant me that permission in Server Settings > Roles.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_ADD")
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_REMOVE")
-            await ctx.send(f"Failed to toggle role: {e}")
+            await self._safe_reply(ctx, f"Failed to toggle role: {e}")
 
     @commands.hybrid_command(name="addmod", help="Add the moderator role to a user")
     @app_commands.describe(user="Member to promote to moderator")
@@ -431,38 +428,34 @@ class ModCog(commands.Cog):
     async def addmod(self, ctx: commands.Context, user: discord.Member):
         """Promote a user to moderator"""
         if ctx.guild is None:
-             return await ctx.send("This command can only be used in a server, not in DMs.")
+             return await ctx.send("This command can only be used in a server, not in DMs.", allowed_mentions=discord.AllowedMentions.none())
 
         MOD_ROLE_ID = MODERATION_ROLE_ID
         role = ctx.guild.get_role(MOD_ROLE_ID)
         
         if not role:
-            await ctx.send(f"The moderator role (ID: {MOD_ROLE_ID}) does not exist in this server. Ask an admin to create it or update the MODERATION_ROLE_ID in the bot config.")
+            await ctx.send(f"The moderator role (ID: {MOD_ROLE_ID}) does not exist in this server. Ask an admin to create it or update the MODERATION_ROLE_ID in the bot config.", allowed_mentions=discord.AllowedMentions.none())
             return
             
         if role in user.roles:
-            await ctx.send(f"{user.mention} already has the moderator role.")
+            await ctx.send(f"{user.display_name} already has the moderator role.", allowed_mentions=discord.AllowedMentions.none())
             return
             
         try:
             register_mod_action(self.bot, ctx.guild.id, user.id, ctx.author.id, f"Promoted to Moderator by {ctx.author}", "ROLE_ADD")
             await user.add_roles(role, reason=f"Promoted to Moderator by {ctx.author}")
-            
-            embed = discord.Embed(
-                title="Staff Addition",
-                description=f"Successfully Made {user.mention} a Staff!",
-                color=discord.Color.blue()
+            view = self._mod_action_card(
+                "Staff Addition", "info",
+                description=f"Successfully made {user.display_name} a staff member.",
+                fields={"User": f'{user.display_name} ({user.id})', "Role": role.name, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
             )
-            embed.add_field(name="Role Added", value=role.mention)
-            embed.set_footer(text=f"Promoted by {ctx.author}")
-            
-            await ctx.send(embed=embed)
+            await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_ADD")
-            await ctx.send("I'm missing the 'Manage Roles' permission. Ask an admin to grant me that permission.")
+            await self._safe_reply(ctx, "I'm missing the 'Manage Roles' permission. Ask an admin to grant me that permission.")
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, user.id, "ROLE_ADD")
-            await ctx.send(f"Failed to promote user: {e}")
+            await self._safe_reply(ctx, f"Failed to promote user: {e}")
 
     @commands.hybrid_command(name="timeout", aliases=["mute"], help="Timeout a member for a specified duration")
     @app_commands.describe(
@@ -532,12 +525,12 @@ class ModCog(commands.Cog):
                 user=member,
                 description=f"**{member}** has been timed out.",
                 fields={
-                    "User": member.mention,
+                    "User": f'{member.display_name} ({member.id})',
                     "Duration": duration,
                     "Expires": f"<t:{int(timeout_until.timestamp())}:F>",
                     "Reason": reason,
                     "Appeal": appeal_text,
-                    "Moderator": ctx.author.mention,
+                    "Moderator": f'{ctx.author.display_name} ({ctx.author.id})',
                 },
             )
             await self._safe_reply(ctx, view=view)
@@ -557,7 +550,7 @@ class ModCog(commands.Cog):
         if not self._check_permit(ctx, "moderate_members"):
             return await self._safe_reply(ctx, "You need the 'Moderate Members' permission or a matching permit to remove timeouts.")
         if not member.timed_out_until:
-            return await self._safe_reply(ctx, f"{member.mention} is not timed out.")
+            return await self._safe_reply(ctx, f"{member.display_name} is not timed out.")
 
         try:
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, reason, "TIMEOUT_REMOVED")
@@ -567,7 +560,7 @@ class ModCog(commands.Cog):
                 "Timeout Removed", "untimeout",
                 user=member,
                 description=f"Timeout removed from **{member}**.",
-                fields={"User": member.mention, "Reason": reason, "Moderator": ctx.author.mention},
+                fields={"User": f'{member.display_name} ({member.id})', "Reason": reason, "Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -605,13 +598,13 @@ class ModCog(commands.Cog):
                 view = self._mod_action_card(
                     "Slowmode Disabled", "success",
                     description=f"Slowmode has been disabled in {ctx.channel.mention}.",
-                    fields={"Moderator": ctx.author.mention},
+                    fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
                 )
             else:
                 view = self._mod_action_card(
                     "Slowmode Enabled", "info",
                     description=f"Slowmode set to **{seconds}** seconds in {ctx.channel.mention}.",
-                    fields={"Moderator": ctx.author.mention},
+                    fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
                 )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -640,7 +633,7 @@ class ModCog(commands.Cog):
                 view = self._mod_action_card(
                     "Thread Locked", "info",
                     description=f"**{new_name}** has been locked.",
-                    fields={"Moderator": ctx.author.mention},
+                    fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
                 )
                 await self._safe_reply(ctx, view=view)
             except discord.Forbidden:
@@ -663,7 +656,7 @@ class ModCog(commands.Cog):
             view = self._mod_action_card(
                 "Channel Locked", "error",
                 description=f"{target_channel.mention} has been locked. Members cannot send messages.",
-                fields={"Moderator": ctx.author.mention},
+                fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -692,7 +685,7 @@ class ModCog(commands.Cog):
                 view = self._mod_action_card(
                     "Thread Unlocked", "success",
                     description=f"**{new_name}** has been unlocked.",
-                    fields={"Moderator": ctx.author.mention},
+                    fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
                 )
                 await self._safe_reply(ctx, view=view)
             except discord.Forbidden:
@@ -715,7 +708,7 @@ class ModCog(commands.Cog):
             view = self._mod_action_card(
                 "Channel Unlocked", "success",
                 description=f"{target_channel.mention} has been unlocked.",
-                fields={"Moderator": ctx.author.mention},
+                fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
             )
             await self._safe_reply(ctx, view=view)
         except discord.Forbidden:
@@ -730,12 +723,9 @@ class ModCog(commands.Cog):
     async def lockdown(self, ctx: commands.Context):
         """Lock all channels in the server"""
         assert ctx.guild is not None
-        
-        await ctx.send("Initiating server lockdown...")
-        
+        await self._safe_reply(ctx, "Initiating server lockdown...")
         locked_count = 0
         failed_count = 0
-        
         for channel in ctx.guild.text_channels:
             try:
                 overwrites = channel.overwrites_for(ctx.guild.default_role)
@@ -745,18 +735,15 @@ class ModCog(commands.Cog):
                 locked_count += 1
             except (discord.Forbidden, Exception):
                 failed_count += 1
-        
-        embed = discord.Embed(
-            title="Server Lockdown Complete",
-            description=f"Successfully locked **{locked_count}** channels.",
-            color=discord.Color.red()
-        )
-        
+        desc = f"Successfully locked **{locked_count}** channels."
         if failed_count > 0:
-            embed.add_field(name="Failed", value=f"{failed_count} channels could not be locked.", inline=False)
-        
-        embed.set_footer(text=f"Lockdown initiated by {ctx.author}")
-        await ctx.send(embed=embed)
+            desc += f"\n{failed_count} channels could not be locked."
+        view = self._mod_action_card(
+            "Server Lockdown", "error",
+            description=desc,            fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+        )
+        await self._safe_reply(ctx, view=view)
+
 
     @commands.hybrid_command(name="unlockdown", help="Unlock all previously locked channels")
     @commands.has_permissions(administrator=True)
@@ -765,15 +752,11 @@ class ModCog(commands.Cog):
     async def unlockdown(self, ctx: commands.Context):
         """Unlock all previously locked channels"""
         assert ctx.guild is not None
-        
         if not self.lockdown_channels:
-            return await ctx.send("No channels are currently locked down. Use ?lockdown to lock all channels first.")
-        
-        await ctx.send("Removing server lockdown...")
-        
+            return await self._safe_reply(ctx, "No channels are currently locked down. Use ?lockdown to lock all channels first.")
+        await self._safe_reply(ctx, "Removing server lockdown...")
         unlocked_count = 0
         failed_count = 0
-        
         for channel_id in list(self.lockdown_channels):
             channel = ctx.guild.get_channel(channel_id)
             if channel and isinstance(channel, discord.TextChannel):
@@ -785,81 +768,217 @@ class ModCog(commands.Cog):
                     unlocked_count += 1
                 except (discord.Forbidden, Exception):
                     failed_count += 1
-        
-        embed = discord.Embed(
-            title="Server Lockdown Removed",
-            description=f"Successfully unlocked **{unlocked_count}** channels.",
-            color=discord.Color.green()
-        )
-        
+        desc = f"Successfully unlocked **{unlocked_count}** channels."
         if failed_count > 0:
-            embed.add_field(name="Failed", value=f"{failed_count} channels could not be unlocked.", inline=False)
-        
-        embed.set_footer(text=f"Lockdown removed by {ctx.author}")
-        await ctx.send(embed=embed)
+            desc += f"\n{failed_count} channels could not be unlocked."
+        view = self._mod_action_card(
+            "Lockdown Removed", "success",
+            description=desc,
+            fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+        )
+        await self._safe_reply(ctx, view=view)
 
     @commands.hybrid_command(name="nuke", help="Clone and delete a channel to clear all messages (OWNER ONLY)")
     @app_commands.describe(channel="Channel to nuke (optional, defaults to current)")
-    @commands.bot_has_permissions(manage_channels=True)
+    @commands.bot_has_permissions(manage_channels=True, read_message_history=True, add_reactions=True)
     @commands.guild_only()
     async def nuke(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
-        """Nuke a channel by cloning and deleting it (Owner only)"""
-        # Check if user is the bot owner
+        """Nuke a channel by cloning and deleting it (Owner only)
+
+        Flow: send embed -> react green tick / red tick -> nuke -> send success in new channel.
+        """
+        # 1. Owner check
         if ctx.author.id != BOT_OWNER_ID:
-            return await ctx.send("This command is restricted to the bot owner only.")
-        
-        # Ensure channel is a TextChannel: prefer provided channel, otherwise use ctx.channel if it's a TextChannel
-        channel_to_nuke = channel if isinstance(channel, discord.TextChannel) else (ctx.channel if isinstance(ctx.channel, discord.TextChannel) else None)
+            return await self._safe_reply(ctx, "This command is restricted to the bot owner only.",
+                                          allowed_mentions=discord.AllowedMentions.none())
+
+        # 2. Resolve target channel
+        channel_to_nuke: discord.TextChannel | None = None
+        if isinstance(channel, discord.TextChannel):
+            channel_to_nuke = channel
+        elif isinstance(ctx.channel, discord.TextChannel):
+            channel_to_nuke = ctx.channel
+
         if channel_to_nuke is None:
-            return await ctx.send("This command can only be used on text channels.")
-        
-        try:
-            # Create confirmation message
-            embed = discord.Embed(
-                title="Confirm Channel Nuke",
-                description=f"Are you sure you want to nuke {channel_to_nuke.mention}?\n\n**This will:**\n• Delete all messages\n• Reset channel position\n• Preserve permissions and settings",
-                color=discord.Color.red()
+            return await self._safe_reply(ctx, "This command can only be used on text channels.",
+                                          allowed_mentions=discord.AllowedMentions.none())
+
+        # 3. Prevent nuking system channels
+        if channel_to_nuke.is_news():
+            return await self._safe_reply(ctx, "Cannot nuke announcement channels.",
+                                          allowed_mentions=discord.AllowedMentions.none())
+
+        # 4. Prevent nuking protected channels by name
+        protected_names = {"rules", "announcements", "welcome", "server-info", "faq"}
+        if channel_to_nuke.name.lower() in protected_names:
+            return await self._safe_reply(ctx, f"Cannot nuke protected channel: {channel_to_nuke.mention}",
+                                          allowed_mentions=discord.AllowedMentions.none())
+
+        # 5. Check bot has permissions in the target channel
+        bot_perms = channel_to_nuke.permissions_for(ctx.guild.me)  # type: ignore[union-attr]
+        required = ["manage_channels", "read_message_history"]
+        missing = [p for p in required if not getattr(bot_perms, p, False)]
+        if missing:
+            return await self._safe_reply(
+                ctx,
+                f"I'm missing permissions in {channel_to_nuke.mention}: **{', '.join(missing)}**. "
+                "Ask an admin to grant me that permission.",
+                allowed_mentions=discord.AllowedMentions.none(),
             )
-            embed.set_footer(text="React with <:greentick:1529045309081256026> to confirm or <:redtick:1529045360742502481> to cancel")
-            
-            confirm_msg = await ctx.send(embed=embed)
-            await confirm_msg.add_reaction("2705")
-            await confirm_msg.add_reaction("274C")
-            
-            def check(reaction, user):
-                return user == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == confirm_msg.id
-            
-            try:
-                reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
-                
-                if str(reaction.emoji) == "❌":
-                    await confirm_msg.delete()
-                    return await ctx.send("Channel nuke cancelled.")
-                
-                # Proceed with nuke
-                position = channel_to_nuke.position
-                new_channel = await channel_to_nuke.clone(reason=f"Channel nuked by {ctx.author}")
-                await channel_to_nuke.delete(reason=f"Channel nuked by {ctx.author}")
-                await new_channel.edit(position=position)
-                
-                embed = discord.Embed(
-                    title="💥 Channel Nuked",
-                    description="This channel has been completely reset!",
-                    color=discord.Color.green()
-                )
-                embed.set_image(url="https://media.giphy.com/media/HhTXt43pk1I1W/giphy.gif")
-                embed.set_footer(text=f"Nuked by {ctx.author}")
-                
-                await new_channel.send(embed=embed)
-                
-            except asyncio.TimeoutError:
-                await confirm_msg.delete()
-                await ctx.send("Confirmation timed out. Channel was not nuked.")
-                
+
+        # 6. Count messages for preview
+        msg_count = 0
+        try:
+            async for _ in channel_to_nuke.history(limit=None):
+                msg_count += 1
         except discord.Forbidden:
-            await ctx.send("I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.")
+            msg_count = "unknown"
+
+        created_ts = int(channel_to_nuke.created_at.timestamp()) if channel_to_nuke.created_at else 0
+        created = f"<t:{created_ts}:R>" if created_ts else "unknown"
+        topic = (channel_to_nuke.topic or "None")
+        if len(topic) > 100:
+            topic = topic[:97] + "..."
+        category = channel_to_nuke.category.name if channel_to_nuke.category else "None"
+        thread_count = len(channel_to_nuke.threads) if hasattr(channel_to_nuke, "threads") else 0
+        invite_count = 0
+        try:
+            invites = await channel_to_nuke.guild.invites()
+            invite_count = sum(1 for inv in invites if inv.channel.id == channel_to_nuke.id)
+        except discord.Forbidden:
+            invite_count = "?"
+
+        # 7. Log the nuke attempt
+        import logging
+        log = logging.getLogger("modcog.nuke")
+        log.warning(
+            f"NUKE requested by {ctx.author} ({ctx.author.id}) "
+            f"on #{channel_to_nuke.name} ({channel_to_nuke.id}) in {ctx.guild.name}"
+        )
+
+        # 8. Build the nuke embed with details
+        embed = discord.Embed(
+            title="Channel Nuke",
+            description=(
+                f"You are about to **permanently destroy** {channel_to_nuke.mention}.\n\n"
+                "All messages, pins, threads, and invites will be **irreversibly deleted**."
+            ),
+            color=discord.Color(0xED4245),
+            timestamp=datetime.now(timezone.utc),
+        )
+        embed.add_field(name="Channel", value=f"{channel_to_nuke.mention} (`{channel_to_nuke.id}`)", inline=False)
+        embed.add_field(name="Category", value=category, inline=True)
+        embed.add_field(name="Created", value=created, inline=True)
+        embed.add_field(name="Messages", value=f"~{msg_count}", inline=True)
+        embed.add_field(name="Threads", value=str(thread_count), inline=True)
+        embed.add_field(name="Pending Invites", value=str(invite_count), inline=True)
+        if topic != "None":
+            embed.add_field(name="Topic", value=topic, inline=False)
+        embed.add_field(
+            name="What Happens",
+            value=(
+                "1. Delete all messages and pins\n"
+                "2. Delete all active threads\n"
+                "3. Revoke all pending invites\n"
+                "4. Clone channel (preserves permissions, position, category)\n"
+                "5. Delete original channel"
+            ),
+            inline=False,
+        )
+        embed.set_footer(text=f"Requested by {ctx.author.display_name} ({ctx.author.id})")
+
+        # 9. Send the embed and add reaction buttons
+        confirm_msg = await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        try:
+            await confirm_msg.add_reaction("\u2705")  # green tick
+            await confirm_msg.add_reaction("\u274c")  # red cross
+        except discord.Forbidden:
+            return await self._safe_reply(ctx, "I'm missing the 'Add Reactions' permission.",
+                                          allowed_mentions=discord.AllowedMentions.none())
+
+        # 10. Wait for reaction from the command author only
+        def check(reaction: discord.Reaction, user: discord.Member) -> bool:
+            return user.id == ctx.author.id and str(reaction) in ["\u2705", "\u274c"]
+
+        try:
+            reaction, _ = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+        except asyncio.TimeoutError:
+            try:
+                await confirm_msg.clear_reactions()
+            except discord.Forbidden:
+                pass
+            await confirm_msg.edit(embed=discord.Embed(
+                title="Nuke Cancelled",
+                description="Confirmation timed out after 30 seconds.",
+                color=discord.Color(0x99AAB5),
+            ))
+            return
+
+        # 11. Handle reaction
+        if str(reaction) == "\u274c":  # red cross - cancel
+            try:
+                await confirm_msg.clear_reactions()
+            except discord.Forbidden:
+                pass
+            await confirm_msg.edit(embed=discord.Embed(
+                title="Nuke Cancelled",
+                description="No changes were made to the channel.",
+                color=discord.Color(0x57F287),
+            ))
+            return
+
+        # 12. Green tick confirmed - execute the nuke
+        log.warning(
+            f"NUKE CONFIRMED by {ctx.author} ({ctx.author.id}) "
+            f"on #{channel_to_nuke.name} ({channel_to_nuke.id}) in {ctx.guild.name}"
+        )
+
+        try:
+            position = channel_to_nuke.position
+            new_channel = await channel_to_nuke.clone(
+                reason=f"Channel nuked by {ctx.author} ({ctx.author.id})"
+            )
+            await channel_to_nuke.delete(
+                reason=f"Channel nuked by {ctx.author} ({ctx.author.id})"
+            )
+            await new_channel.edit(position=position)
+        except discord.Forbidden:
+            return
         except Exception as e:
-            await ctx.send(f"Failed to nuke channel: {e}")
+            try:
+                await ctx.send(
+                    f"Failed to nuke channel: {e}",
+                    allowed_mentions=discord.AllowedMentions.none(),
+                )
+            except discord.Forbidden:
+                pass
+            return
+
+        # 13. Send success embed with nuclear bomb gif in the recreated channel
+        success_embed = discord.Embed(
+            title="Nuked",
+            description=(
+                "This channel has been completely reset.\n"
+                "All previous messages, pins, and threads have been permanently deleted."
+            ),
+            color=discord.Color(0x57F287),
+            timestamp=datetime.now(timezone.utc),
+        )
+        success_embed.set_image(url="https://media.tenor.com/images/40f540506e13b53c2f44615a168923f8/tenor.gif")
+        success_embed.add_field(
+            name="Moderator",
+            value=f"{ctx.author.display_name} ({ctx.author.id})",
+            inline=True,
+        )
+        success_embed.add_field(
+            name="Channel",
+            value=new_channel.mention,
+            inline=True,
+        )
+        try:
+            await new_channel.send(embed=success_embed, allowed_mentions=discord.AllowedMentions.none())
+        except discord.ForForbidden:
+            pass
 
     @commands.hybrid_command(name="massban", help="Ban multiple users by ID (OWNER ONLY)")
     @app_commands.describe(user_ids="User IDs to ban (space-separated)", reason="Reason for the bans")
@@ -869,7 +988,7 @@ class ModCog(commands.Cog):
         """Ban multiple users by their IDs (Owner only)"""
         # Check if user is the bot owner
         if ctx.author.id != BOT_OWNER_ID:
-            return await ctx.send("This command is restricted to the bot owner only.")
+            return await ctx.send("This command is restricted to the bot owner only.", allowed_mentions=discord.AllowedMentions.none())
         
         assert ctx.guild is not None
         
@@ -877,12 +996,12 @@ class ModCog(commands.Cog):
         ids = [int(id.strip()) for id in user_ids.split() if id.strip().isdigit()]
         
         if not ids:
-            return await ctx.send("No valid user IDs provided. Enter one or more numeric user IDs separated by spaces.")
+            return await ctx.send("No valid user IDs provided. Enter one or more numeric user IDs separated by spaces.", allowed_mentions=discord.AllowedMentions.none())
         
         if len(ids) > 50:
-            return await ctx.send("Cannot ban more than 50 users at once. Split the list into smaller batches.")
+            return await ctx.send("Cannot ban more than 50 users at once. Split the list into smaller batches.", allowed_mentions=discord.AllowedMentions.none())
         
-        await ctx.send(f"Processing ban for {len(ids)} user(s)...")
+        await ctx.send(f"Processing ban for {len(ids)} user(s)...", allowed_mentions=discord.AllowedMentions.none())
         
         banned = []
         failed = []
@@ -898,29 +1017,24 @@ class ModCog(commands.Cog):
                 discard_mod_action(self.bot, ctx.guild.id, user_id, "BAN")
                 failed.append(f"{user_id}: {str(e)}")
         
-        embed = discord.Embed(
-            title="Mass Ban Complete",
-            color=discord.Color.red()
-        )
-        
+        lines = []
         if banned:
-            embed.add_field(
-                name=f"Banned ({len(banned)})",
-                value="\n".join(banned[:10]) + (f"\n...and {len(banned) - 10} more" if len(banned) > 10 else ""),
-                inline=False
-            )
-        
+            lines.append(f"**Banned ({len(banned)})**")
+            lines.extend(banned[:10])
+            if len(banned) > 10:
+                lines.append(f"...and {len(banned) - 10} more")
         if failed:
-            embed.add_field(
-                name=f"Failed ({len(failed)})",
-                value="\n".join(failed[:10]) + (f"\n...and {len(failed) - 10} more" if len(failed) > 10 else ""),
-                inline=False
-            )
-        
-        embed.add_field(name="Reason", value=reason, inline=False)
-        embed.set_footer(text=f"Mass ban by {ctx.author}")
-        
-        await ctx.send(embed=embed)
+            lines.append(f"**Failed ({len(failed)})**")
+            lines.extend(failed[:10])
+            if len(failed) > 10:
+                lines.append(f"...and {len(failed) - 10} more")
+        lines.append(f"**Reason:** {reason}")
+        view = self._mod_action_card(
+            "Mass Ban Complete", "ban",
+            description="\n".join(lines),
+            fields={"Moderator": f'{ctx.author.display_name} ({ctx.author.id})'},
+        )
+        await self._safe_reply(ctx, view=view)
 
     @commands.hybrid_command(name="nickname", help="Change a member's nickname")
     @app_commands.describe(member="Member to change nickname", nickname="New nickname (leave empty to reset)")
@@ -944,10 +1058,10 @@ class ModCog(commands.Cog):
                 "Nickname Changed", "info",
                 user=member,
                 fields={
-                    "Member": member.mention,
+                    "Member": f'{member.display_name} ({member.id})',
                     "Old": old_nick,
                     "New": new_nick,
-                    "Moderator": ctx.author.mention,
+                    "Moderator": f'{ctx.author.display_name} ({ctx.author.id})',
                 },
             )
             await self._safe_reply(ctx, view=view)
@@ -1001,7 +1115,7 @@ class ModCog(commands.Cog):
             
             # Roles
             if len(target_user.roles) > 1:
-                roles = [role.mention for role in reversed(target_user.roles[1:])][:20]
+                roles = [role.name for role in reversed(target_user.roles[1:])][:20]
                 embed.add_field(
                     name=f"Roles [{len(target_user.roles) - 1}]",
                     value=" ".join(roles) if roles else "None",
@@ -1019,7 +1133,7 @@ class ModCog(commands.Cog):
             
             # Highest role
             if target_user.top_role != ctx.guild.default_role:
-                embed.add_field(name="⬆Highest Role", value=target_user.top_role.mention, inline=True)
+                embed.add_field(name="⬆Highest Role", value=target_user.top_role.name, inline=True)
             
             # Boost status
             if target_user.premium_since:
@@ -1037,7 +1151,7 @@ class ModCog(commands.Cog):
                     inline=False
                 )
         
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
     
     @commands.hybrid_command(name="avatar", help="Get a user's avatar")
     @app_commands.describe(user="User to get avatar from (defaults to yourself)")
@@ -1056,7 +1170,7 @@ class ModCog(commands.Cog):
         else:
             embed.description = "This user has no custom avatar."
         
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
     
     @commands.hybrid_command(name="roleinfo", help="Get information about a role")
     @app_commands.describe(role="Role to get information about")
@@ -1124,7 +1238,7 @@ class ModCog(commands.Cog):
         if key_perms:
             embed.add_field(name="Key Permissions", value="\n".join(key_perms), inline=False)
         
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
     
     @commands.hybrid_command(name="serverinfo", help="Get detailed server information")
     @app_commands.describe()
@@ -1200,11 +1314,11 @@ class ModCog(commands.Cog):
             owner_mention = "Unknown"
             owner_display = "Unknown"
         else:
-            owner_mention = owner.mention
+            owner_mention = f'{owner.display_name} ({owner.id})'
             owner_display = str(owner)
         embed.add_field(
             name="Server Owner",
-            value=f"{owner_mention}\n{owner_display}",
+            value=f"{owner.display_name} ({owner.id})",
             inline=True
         )
         
@@ -1234,7 +1348,7 @@ class ModCog(commands.Cog):
                 inline=False
             )
         
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     # -------- Warnings Commands --------
     # Warnings system moved to SAM module (/warn, /unwarn, /warnings)
@@ -1269,7 +1383,7 @@ class ModCog(commands.Cog):
                 target_member = await interaction.guild.fetch_member(user.id)
             except discord.NotFound:
                 await interaction.response.send_message(
-                    f"User {user.mention} is not a member of this server.",
+                    f"User {user.display_name} is not a member of this server.",
                     ephemeral=True
                 )
                 return
@@ -1281,7 +1395,7 @@ class ModCog(commands.Cog):
         
         embed = discord.Embed(
             title="Verification Panel",
-            description=f"Select a verification type for {target_member.mention}:",
+            description=f"Select a verification type for {target_member.display_name}:",
             color=0x5865F2
         )
         
@@ -1356,7 +1470,7 @@ class VerificationView(discord.ui.View):
         # Update the embed to show selection
         embed = discord.Embed(
             title="Verification Panel",
-            description=f"Selected: **{self.VERIFICATION_ROLES[self.selected_verification]['label']}** for {self.target_member.mention}",
+            description=f"Selected: **{self.VERIFICATION_ROLES[self.selected_verification]['label']}** for {self.target_member.display_name}",
             color=0x5865F2
         )
         
@@ -1391,7 +1505,7 @@ class VerificationView(discord.ui.View):
         # Check if user already has the role
         if role in self.target_member.roles:
             await interaction.followup.send(
-                f"ℹ️ {self.target_member.mention} already possesses the **{role.name}** role.",
+                f"ℹ️ {self.target_member.display_name} already possesses the **{role.name}** role.",
                 ephemeral=True
             )
             return
@@ -1403,11 +1517,11 @@ class VerificationView(discord.ui.View):
             # Update embed with confirmation
             embed = discord.Embed(
                 title="<:greentick:1529045309081256026> Verification Complete",
-                description=f"Successfully assigned **{role.name}** to {self.target_member.mention}",
+                description=f"Successfully assigned **{role.name}** to {self.target_member.display_name}",
                 color=0x00FF00
             )
             embed.add_field(name="Verification Type", value=self.VERIFICATION_ROLES[self.selected_verification]["label"], inline=False)
-            embed.add_field(name="Verified By", value=interaction.user.mention, inline=False)
+            embed.add_field(name="Verified By", value=f"{interaction.user.display_name} ({interaction.user.id})", inline=False)
             embed.timestamp = datetime.now(timezone.utc)
             
             # Disable all components

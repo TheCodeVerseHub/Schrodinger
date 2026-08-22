@@ -112,9 +112,9 @@ class RulesCog(commands.Cog):
             if rule_key == "tldr":
                 text = f"*{self.intro}*\n\n{text}"
             embed = discord.Embed(description=text, color=discord.Color.blue())
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         else:
-            await ctx.send(f"Rule `{rule_key}` not found.")
+            await ctx.send(f"Rule `{rule_key}` not found.", allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name="r1", help="R1: Follow Discord Terms & Community Guidelines")
     async def rule1(self, ctx):

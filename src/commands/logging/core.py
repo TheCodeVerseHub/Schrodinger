@@ -389,7 +389,7 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
 
         # Permission test before saving
         try:
-            test_msg = await channel.send(embed=discord.Embed(title="Test", description="Log channel enabled."))
+            test_msg = await channel.send(embed=discord.Embed(title="Test", description="Log channel enabled."), allowed_mentions=discord.AllowedMentions.none())
             await test_msg.delete()
         except discord.Forbidden:
             await ctx.send(

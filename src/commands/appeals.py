@@ -554,7 +554,7 @@ class AppealReviewDashboard(discord.ui.LayoutView):
             if row and row[0]:
                 moderator = self.cog.bot.get_user(row[0])
                 if moderator:
-                    return moderator.mention
+                    return moderator.display_name
         except Exception:
             pass
         return "server moderation staff"
@@ -979,7 +979,7 @@ class Appeals(commands.Cog):
     def _format_roles(self, member: Optional[discord.Member]) -> str:
         if not member:
             return "Unavailable"
-        roles = [role.mention for role in member.roles if not role.is_default()]
+        roles = [role.name for role in member.roles if not role.is_default()]
         if not roles:
             return "None"
         return ", ".join(roles[:8]) + ("..." if len(roles) > 8 else "")
@@ -1369,7 +1369,7 @@ class Appeals(commands.Cog):
                 content="@here",
                 allowed_mentions=discord.AllowedMentions(everyone=True),
             )
-            staff_message = await review_channel.send(view=review_view)
+            staff_message = await review_channel.send(view=review_view, allowed_mentions=discord.AllowedMentions.none())
             conn = sqlite3.connect(DATABASE_NAME)
             cursor = conn.cursor()
             cursor.execute(
@@ -1575,7 +1575,7 @@ class Appeals(commands.Cog):
         conn.close()
 
         decision_reason = (
-            f"{decision.title()} by {interaction.user.mention}\n"
+            f"{decision.title()} by {interaction.user.display_name}\n"
             f"**Reason:** {review_reason}"
         )
         resolved_view = AppealReviewDashboard(
@@ -2005,7 +2005,7 @@ class Appeals(commands.Cog):
                 if time_diff > 60:
                     continue
                 if entry.user and not entry.user.bot:
-                    return entry.user.mention, entry.reason or "No reason provided"
+                    return f"{entry.user.display_name} ({entry.user.id})", entry.reason or "No reason provided"
                 # Audit entry made by the bot (API timeout removal) - look for
                 # the human actor in the audit reason.
                 if entry.user and entry.user.id == member.guild.me.id:
@@ -2154,7 +2154,7 @@ class Appeals(commands.Cog):
                 appeals_channel, context="punishment expiry log"
             ):
                 logger.debug("Sending log embed to %s", appeals_channel.name)
-                await appeals_channel.send(embed=log_embed)
+                await appeals_channel.send(embed=log_embed, allowed_mentions=discord.AllowedMentions.none())
                 logger.info(
                     "Successfully logged punishment expiry for appeal #%s to %s",
                     appeal_id,
@@ -2304,7 +2304,7 @@ class Appeals(commands.Cog):
             if ch:
                 embed = discord.Embed(
                     title="DM Delivery Failed",
-                    description=f"**Could not send appeal form to {user.mention}**\nUser will NOT be able to submit an appeal via DM.",
+                    description=f"**Could not send appeal form to {user.display_name} ({user.id})**\nUser will NOT be able to submit an appeal via DM.",
                     color=APPEALS_REJECT_COLOR,
                 )
                 embed.add_field(name="User", value=f"{user} ({user.id})", inline=True)
@@ -2350,7 +2350,7 @@ class Appeals(commands.Cog):
             if ch:
                 embed = discord.Embed(
                     title="DM Delivered Successfully",
-                    description=f"Successfully sent appeal form to {user.mention}",
+                    description=f"Successfully sent appeal form to {user.display_name} ({user.id})",
                     color=APPEALS_ACCEPT_COLOR,
                 )
                 embed.add_field(name="User", value=f"{user} ({user.id})", inline=True)
@@ -2498,7 +2498,7 @@ class Appeals(commands.Cog):
                         )
                         action_text = "Timeout removed via approved appeal"
                         log_title = "Timeout Removed via Approved Appeal"
-                        log_description = f"User {after.mention} (`{after.id}`) had their timeout removed after appeal **#{appeal_id_for_log}** was approved."
+                        log_description = f"User {after.display_name} ({after.id}) had their timeout removed after appeal **#{appeal_id_for_log}** was approved."
                         color = APPEALS_ACCEPT_COLOR
                     elif was_natural_expiry:
                         logger.info(
@@ -2508,7 +2508,7 @@ class Appeals(commands.Cog):
                         )
                         action_text = "Natural timeout expiry"
                         log_title = "Natural Timeout Expiry Detected"
-                        log_description = f"User {after.mention} (`{after.id}`) had their timeout naturally expire while having a pending appeal."
+                        log_description = f"User {after.display_name} ({after.id}) had their timeout naturally expire while having a pending appeal."
                         color = APPEALS_TIMEOUT_END_COLOR
                     else:
                         logger.info(
@@ -2518,7 +2518,7 @@ class Appeals(commands.Cog):
                         )
                         action_text = "Manual timeout removal"
                         log_title = "Manual Timeout Removal Detected"
-                        log_description = f"User {after.mention} (`{after.id}`) had their timeout manually removed while having a pending appeal."
+                        log_description = f"User {after.display_name} ({after.id}) had their timeout manually removed while having a pending appeal."
                         color = APPEALS_TIMEOUT_END_COLOR
                         # Identify the moderator and removal reason for audit.
                         (
@@ -2606,7 +2606,7 @@ class Appeals(commands.Cog):
                     if appeals_channel and self._guard_appeals_channel(
                         appeals_channel, context="appeal log embed"
                     ):
-                        await appeals_channel.send(embed=log_embed)
+                        await appeals_channel.send(embed=log_embed, allowed_mentions=discord.AllowedMentions.none())
                     else:
                         print(f"[Appeals] {log_embed.description}")
 
@@ -2725,7 +2725,7 @@ class Appeals(commands.Cog):
                 try:
                     log_embed = discord.Embed(
                         title="Manual Timeout Removal Detected",
-                        description=f"User {after.mention} (`{after.id}`) had their timeout manually removed while having a pending appeal.",
+                        description=f"User {after.display_name} ({after.id}) had their timeout manually removed while having a pending appeal.",
                         color=APPEALS_TIMEOUT_END_COLOR,
                         timestamp=removal_time,
                     )
@@ -2758,7 +2758,7 @@ class Appeals(commands.Cog):
                     if appeals_channel and self._guard_appeals_channel(
                         appeals_channel, context="appeal log embed"
                     ):
-                        await appeals_channel.send(embed=log_embed)
+                        await appeals_channel.send(embed=log_embed, allowed_mentions=discord.AllowedMentions.none())
                 except Exception as e:
                     print(f"[Appeals] Error logging manual timeout removal: {e}")
 
@@ -2820,7 +2820,7 @@ class Appeals(commands.Cog):
             embed = create_error_embed(
                 "Invalid Status", f"Valid statuses: {', '.join(valid_statuses)}"
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return
 
         conn = sqlite3.connect(DATABASE_NAME)
@@ -2841,7 +2841,7 @@ class Appeals(commands.Cog):
 
         if not appeals:
             embed = create_info_embed("No Appeals", f"No {status} appeals found.")
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return
 
         # Resolve user display info (cached guild lookups, then fetch_user).
@@ -2901,7 +2901,7 @@ class Appeals(commands.Cog):
             embed = create_error_embed(
                 "Appeal Not Found", f"No appeal found with ID #{appeal_id}"
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return
 
         user_id, reason, status, timestamp, review_reason, reviewed_by, reviewed_at = (
@@ -2945,7 +2945,7 @@ class Appeals(commands.Cog):
             inline=False,
         )
 
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.hybrid_command(name="appealcancel")
     @app_commands.describe()
@@ -3116,12 +3116,12 @@ class Appeals(commands.Cog):
                             # Create log message
                             log_embed = discord.Embed(
                                 title="Manual Unban Detected",
-                                description=f"User {user.mention} (`{user.id}`) was manually unbanned while having a pending appeal.",
+                                description=f"User {user.display_name} ({user.id}) was manually unbanned while having a pending appeal.",
                                 color=APPEALS_TIMEOUT_END_COLOR,
                             )
                             log_embed.add_field(
                                 name="Unbanned By",
-                                value=f"{entry.user.mention}"
+                                value=f"{entry.user.display_name} ({entry.user.id})"
                                 if entry.user
                                 else "Unknown",
                                 inline=True,
@@ -3144,7 +3144,7 @@ class Appeals(commands.Cog):
                             if appeals_channel and self._guard_appeals_channel(
                                 appeals_channel, context="appeal log embed"
                             ):
-                                await appeals_channel.send(embed=log_embed)
+                                await appeals_channel.send(embed=log_embed, allowed_mentions=discord.AllowedMentions.none())
                             else:
                                 print(f"[Appeals] {log_embed.description}")
                             break

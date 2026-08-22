@@ -10,7 +10,7 @@ from collections import defaultdict
 from typing import Optional
 
 from config import DATABASE_NAME
-from utils.helpers import register_mod_action, discard_mod_action
+from utils.helpers import register_mod_action, discard_mod_action, safe_send
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +84,43 @@ def _delete_tempban(tempban_id: int) -> None:
 class AdvancedModeration(commands.Cog):
     """Advanced moderation features with built-in safety mechanisms"""
 
+    _CARD_COLORS: dict[str, int] = {
+        "ban": 0xED4245,
+        "success": 0x57F287,
+        "info": 0x5865F2,
+        "error": 0xED4245,
+    }
+
     def __init__(self, bot):
         self.bot = bot
-        # Rate limiting for safety
         self.command_cooldowns = defaultdict(list)
+
+    def _check_permit(self, ctx: commands.Context, permission: str) -> bool:
+        guild_perms = getattr(ctx.author, "guild_permissions", None)
+        if guild_perms and getattr(guild_perms, permission, False):
+            return True
+        permits_cog = self.bot.get_cog("PermitSystem")
+        if permits_cog and hasattr(permits_cog, "check_permit") and ctx.guild:
+            return permits_cog.check_permit(ctx.author.id, ctx.guild.id, permission)
+        return False
+
+    @staticmethod
+    def _mod_action_card(title, color_key, *, description="", fields=None, footer=""):
+        color_val = AdvancedModeration._CARD_COLORS.get(color_key, 0x5865F2)
+        container = discord.ui.Container(accent_color=discord.Color(color_val))
+        container.add_item(discord.ui.TextDisplay(f"## {title}"))
+        container.add_item(discord.ui.Separator())
+        if description:
+            container.add_item(discord.ui.TextDisplay(description))
+        if fields:
+            field_lines = [f"**{k}:** {v}" for k, v in fields.items()]
+            container.add_item(discord.ui.TextDisplay("\n".join(field_lines)))
+        if footer:
+            container.add_item(discord.ui.Separator())
+            container.add_item(discord.ui.TextDisplay(f"*{footer}*"))
+        view = discord.ui.LayoutView(timeout=None)
+        view.add_item(container)
+        return view
 
     async def cog_load(self):
         """Restore pending tempbans after a restart.
@@ -151,60 +184,42 @@ class AdvancedModeration(commands.Cog):
     )
     async def tempban(self, ctx, member: discord.Member, duration: int, *, reason: str = "No reason provided"):
         """Temporarily ban a member (max 7 days for safety)"""
-        # Safety checks
-        if not self._check_rate_limit(ctx.author.id, "tempban", 3, 300):  # 3 tempbans per 5 minutes
-            await ctx.send("Rate limit reached. You can only use tempban 3 times per 5 minutes. Please wait before trying again.", ephemeral=True)
-            return
-            
-        if duration > 10080:  # Max 7 days
-            await ctx.send("The maximum tempban duration is 7 days. Choose a shorter duration.", ephemeral=True)
-            return
-            
+        if not self._check_permit(ctx, "ban_members"):
+            return await safe_send(ctx, content="You need the 'Ban Members' permission or a matching permit to use this command.", ephemeral=True)
+        if not self._check_rate_limit(ctx.author.id, "tempban", 3, 300):
+            return await safe_send(ctx, content="Rate limit reached. You can only use tempban 3 times per 5 minutes. Please wait before trying again.", ephemeral=True)
+        if duration > 10080:
+            return await safe_send(ctx, content="The maximum tempban duration is 7 days. Choose a shorter duration.", ephemeral=True)
         if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
-            await ctx.send("Cannot ban this member. Their highest role is equal to or above yours. Only the server owner can ban members with higher roles.", ephemeral=True)
-            return
-            
+            return await safe_send(ctx, content="Cannot ban this member. Their highest role is equal to or above yours. Only the server owner can ban members with higher roles.", ephemeral=True)
         if member == ctx.guild.owner:
-            await ctx.send("Cannot ban the server owner. Only Discord can remove a server owner.", ephemeral=True)
-            return
+            return await safe_send(ctx, content="Cannot ban the server owner. Only Discord can remove a server owner.", ephemeral=True)
 
         try:
-            # Note: per server policy we do not DM users for ban actions.
-            
-            # Register the actual invoker so the logging system attributes the
-            # tempban to the moderator instead of the bot.
             ban_reason = f"Tempban ({duration}m): {reason}"
             register_mod_action(self.bot, ctx.guild.id, member.id, ctx.author.id, ban_reason, "BAN")
-            
-            # Ban the member
             await member.ban(reason=ban_reason)
-            
             unban_at = time.time() + duration * 60
-            # Persist BEFORE scheduling so a crash in between still recovers.
             tempban_id = await asyncio.to_thread(_persist_tempban, ctx.guild.id, member.id, unban_at, ban_reason)
-            # Schedule the unban (the task deletes the record when it fires).
             self.bot.loop.create_task(self._schedule_unban(ctx.guild, member.id, delay=duration * 60, tempban_id=tempban_id))
-            
-            embed = discord.Embed(
-                title="⏰ Temporary Ban Issued",
-                description=f"**{member}** has been temporarily banned",
-                color=0xff0000
+            view = self._mod_action_card(
+                "Temporary Ban Issued", "ban",
+                description=f"**{member}** has been temporarily banned.",
+                fields={
+                    "User": member.display_name,
+                    "Duration": f"{duration} minutes",
+                    "Expires": f"<t:{int(unban_at)}:F>",
+                    "Reason": reason,
+                    "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
+                },
             )
-            embed.add_field(name="Duration", value=f"{duration} minutes", inline=True)
-            embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
-            embed.add_field(name="Reason", value=reason, inline=False)
-            embed.add_field(name="Unban Time", value=f"<t:{int(unban_at)}:F>", inline=False)
-            
-            await ctx.send(embed=embed)
-            
-            # Log to designated channel handled by LoggingCog (via audit logs)
-            
+            await safe_send(ctx, view=view)
         except discord.Forbidden:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
-            await ctx.send("I'm missing the 'Ban Members' permission in this server. Ask an admin to grant me that permission in Server Settings > Roles.", ephemeral=True)
+            await safe_send(ctx, content="I'm missing the 'Ban Members' permission in this server. Ask an admin to grant me that permission.", ephemeral=True)
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
-            await ctx.send(f"An error occurred: {e}. Contact an admin if this persists.", ephemeral=True)
+            await safe_send(ctx, content=f"An error occurred: {e}. Contact an admin if this persists.", ephemeral=True)
 
     async def _execute_unban(self, guild: discord.Guild, user_id: int, tempban_id: Optional[int] = None, reason: str = "Temporary ban expired"):
         """Unban a user and clean up the persisted tempban record.
@@ -241,96 +256,62 @@ class AdvancedModeration(commands.Cog):
     @commands.command(name="hide")
     @commands.has_permissions(manage_channels=True)
     async def hide_channel(self, ctx, channel: Optional[discord.TextChannel] = None):
-        """Hide a channel from @everyone"""
+        """Hide a channel from everyone"""
         guild = ctx.guild
         if guild is None:
-            await ctx.send("This command can only be used in a server, not in DMs.")
-            return
-
+            return await safe_send(ctx, content="This command can only be used in a server, not in DMs.")
+        if not self._check_permit(ctx, "manage_channels"):
+            return await safe_send(ctx, content="You need the 'Manage Channels' permission or a matching permit to use this command.", ephemeral=True)
         resolved_channel = channel or ctx.channel
-
-        # Type guard to ensure channel is TextChannel
         if not isinstance(resolved_channel, discord.TextChannel):
-            await ctx.send("This command can only be used in text channels, not in voice channels or DMs.", ephemeral=True)
-            return
-
-        target_channel: discord.TextChannel = resolved_channel
-        
+            return await safe_send(ctx, content="This command can only be used in text channels.", ephemeral=True)
         try:
-            overwrite = target_channel.overwrites_for(guild.default_role)
+            overwrite = resolved_channel.overwrites_for(guild.default_role)
             overwrite.view_channel = False
-            await target_channel.set_permissions(guild.default_role, overwrite=overwrite, 
-                                        reason=f"Channel hidden by {ctx.author}")
-            
-            embed = discord.Embed(
-                title="👁️‍🗨️ Channel Hidden",
-                description=f"**{target_channel.name}** has been hidden from @everyone",
-                color=0x95a5a6
+            await resolved_channel.set_permissions(guild.default_role, overwrite=overwrite, reason=f"Channel hidden by {ctx.author}")
+            view = self._mod_action_card(
+                "Channel Hidden", "info",
+                description=f"**{resolved_channel.name}** has been hidden from everyone.",
+                fields={"Channel": resolved_channel.mention, "Moderator": f"{ctx.author.display_name} ({ctx.author.id})"},
             )
-            embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
-            await ctx.send(embed=embed)
-            
-            # Log to designated channel
+            await safe_send(ctx, view=view)
             logging_cog = self.bot.get_cog("LoggingCog")
             if logging_cog:
-                await logging_cog.log_event(
-                    event_type="CHANNEL_UPDATE",
-                    guild_id=guild.id,
-                    moderator_id=ctx.author.id,
-                    details=f"**#{target_channel.name}** was hidden from @everyone"
-                )
-            
+                await logging_cog.log_event(event_type="CHANNEL_UPDATE", guild_id=guild.id, moderator_id=ctx.author.id, details=f"**#{resolved_channel.name}** was hidden from everyone")
         except discord.Forbidden:
-            await ctx.send("I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.", ephemeral=True)
+            await safe_send(ctx, content="I'm missing the 'Manage Channels' permission for this channel.", ephemeral=True)
         except Exception as e:
-            await ctx.send(f"An error occurred: {e}. Contact an admin if this persists.", ephemeral=True)
+            await safe_send(ctx, content=f"An error occurred: {e}.", ephemeral=True)
 
     @commands.command(name="unhide")
     @commands.has_permissions(manage_channels=True)
     async def unhide_channel(self, ctx, channel: Optional[discord.TextChannel] = None):
-        """Unhide a channel for @everyone"""
+        """Unhide a channel for everyone"""
         guild = ctx.guild
         if guild is None:
-            await ctx.send("This command can only be used in a server, not in DMs.")
-            return
-
+            return await safe_send(ctx, content="This command can only be used in a server, not in DMs.")
+        if not self._check_permit(ctx, "manage_channels"):
+            return await safe_send(ctx, content="You need the 'Manage Channels' permission or a matching permit to use this command.", ephemeral=True)
         resolved_channel = channel or ctx.channel
-
-        # Type guard to ensure channel is TextChannel
         if not isinstance(resolved_channel, discord.TextChannel):
-            await ctx.send("This command can only be used in text channels, not in voice channels or DMs.", ephemeral=True)
-            return
-
-        target_channel: discord.TextChannel = resolved_channel
-        
+            return await safe_send(ctx, content="This command can only be used in text channels.", ephemeral=True)
         try:
-            overwrite = target_channel.overwrites_for(guild.default_role)
+            overwrite = resolved_channel.overwrites_for(guild.default_role)
             overwrite.view_channel = True
-            await target_channel.set_permissions(guild.default_role, overwrite=overwrite, 
-                                        reason=f"Channel unhidden by {ctx.author}")
-            
-            embed = discord.Embed(
-                title="👁️ Channel Unhidden",
-                description=f"**{target_channel.name}** is now visible to @everyone",
-                color=0x00ff00
+            await resolved_channel.set_permissions(guild.default_role, overwrite=overwrite, reason=f"Channel unhidden by {ctx.author}")
+            view = self._mod_action_card(
+                "Channel Unhidden", "success",
+                description=f"**{resolved_channel.name}** is now visible to everyone.",
+                fields={"Channel": resolved_channel.mention, "Moderator": f"{ctx.author.display_name} ({ctx.author.id})"},
             )
-            embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
-            await ctx.send(embed=embed)
-            
-            # Log to designated channel
+            await safe_send(ctx, view=view)
             logging_cog = self.bot.get_cog("LoggingCog")
             if logging_cog:
-                await logging_cog.log_event(
-                    event_type="CHANNEL_UPDATE",
-                    guild_id=guild.id,
-                    moderator_id=ctx.author.id,
-                    details=f"**#{target_channel.name}** is now visible to @everyone"
-                )
-            
+                await logging_cog.log_event(event_type="CHANNEL_UPDATE", guild_id=guild.id, moderator_id=ctx.author.id, details=f"**#{resolved_channel.name}** is now visible to everyone")
         except discord.Forbidden:
-            await ctx.send("I'm missing the 'Manage Channels' permission for this channel. Ask an admin to grant me that permission.", ephemeral=True)
+            await safe_send(ctx, content="I'm missing the 'Manage Channels' permission for this channel.", ephemeral=True)
         except Exception as e:
-            await ctx.send(f"An error occurred: {e}. Contact an admin if this persists.", ephemeral=True)
+            await safe_send(ctx, content=f"An error occurred: {e}.", ephemeral=True)
 
     # Note: slowmode command already exists in modcog.py, so not implementing here to avoid conflicts
 

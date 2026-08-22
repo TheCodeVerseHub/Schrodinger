@@ -354,7 +354,7 @@ async def on_message(message):
                 color=discord.Color.red()
             )
             try:
-                await message.channel.send(embed=embed, delete_after=10)
+                await message.channel.send(embed=embed, delete_after=10, allowed_mentions=discord.AllowedMentions.none())
             except discord.HTTPException:
                 pass
             logger.warning(f"Prefix command blocked in unauthorized server: {message.guild.name} (ID: {message.guild.id})")

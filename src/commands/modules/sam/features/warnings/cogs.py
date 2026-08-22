@@ -118,7 +118,7 @@ class Warnings(commands.Cog):
         Prefix command: ?warn @user reason
         """
         if not self._check_permit(ctx, "warn_members") and not self._check_permit(ctx, "kick_members"):
-            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to use this command. Ask an admin to grant you the required permission.")
+            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to use this command. Ask an admin to grant you the required permission.", allowed_mentions=discord.AllowedMentions.none())
 
         if reason is None:
             reason = DEFAULT_REASON
@@ -150,22 +150,22 @@ class Warnings(commands.Cog):
                 # Send confirmation to moderator
                 view = _mod_card(
                     "Warning Issued", "warn",
-                    description=f"{user.mention} has been warned.",
+                    description=f"{user.display_name} has been warned.",
                     fields={
                         "Case ID": f"#{warn_obj.id}",
                         "Reason": reason,
-                        "Moderator": ctx.author.mention,
+                        "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
                         "DM Status": dm_status,
                     },
                     footer=f"User ID: {user.id}",
                 )
-                await ctx.send(view=view)
+                await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
             view = _mod_card(
                 "Error", "error",
                 description=f"Failed to issue warning: {e}",
             )
-            await ctx.send(view=view)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.hybrid_command(name="unwarn", description="Remove a warning by ID.")
     @commands.guild_only()
@@ -178,7 +178,7 @@ class Warnings(commands.Cog):
         Prefix command: ?unwarn 123 reason
         """
         if not self._check_permit(ctx, "warn_members") and not self._check_permit(ctx, "kick_members"):
-            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to manage warnings. Ask an admin to grant you the required permission.")
+            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to manage warnings. Ask an admin to grant you the required permission.", allowed_mentions=discord.AllowedMentions.none())
 
         if reason is None:
             reason = "Warning removed by moderator."
@@ -209,17 +209,17 @@ class Warnings(commands.Cog):
                     fields={
                         "Affected User": f"<@{warn_obj.user_id}>",
                         "Removal Reason": reason,
-                        "Moderator": ctx.author.mention,
+                        "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
                         "DM Status": dm_status,
                     },
                 )
-                await ctx.send(view=view)
+                await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         except ValueError:
             view = _mod_card("Error", "error", description=f"Warning `#{case_id}` not found or invalid.")
-            await ctx.send(view=view)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
             view = _mod_card("Error", "error", description=f"Failed to remove warning: {e}")
-            await ctx.send(view=view)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.hybrid_group(name="warnings", description="Manage warnings.")
     @commands.guild_only()
@@ -256,7 +256,7 @@ class Warnings(commands.Cog):
                         "Warnings Leaderboard", "info",
                         description="No warnings have been issued yet in this server.",
                     )
-                    await ctx.send(view=view)
+                    await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
                     return
 
                 lines = []
@@ -270,13 +270,13 @@ class Warnings(commands.Cog):
                     description="\n".join(lines),
                     footer="Top 10 -- Revoked warnings are excluded",
                 )
-                await ctx.send(view=view)
+                await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
             view = _mod_card(
                 "Error", "error",
                 description=f"Failed to load the warnings leaderboard: {e}",
             )
-            await ctx.send(view=view)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
 
     @warnings_group.command(name="view", description="View warnings for a user.")
     async def view_warnings(self, ctx: commands.Context, user: discord.User):
@@ -295,9 +295,9 @@ class Warnings(commands.Cog):
                 if not warnings_list:
                     view = _mod_card(
                         "No Warnings", "unwarn",
-                        description=f"{user.mention} has no warnings.",
+                        description=f"{user.display_name} has no warnings.",
                     )
-                    await ctx.send(view=view)
+                    await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
                     return
 
                 active_warnings = [w for w in warnings_list if not w.revoked]
@@ -325,13 +325,13 @@ class Warnings(commands.Cog):
                     fields=fields,
                     footer=f"{len(active_warnings)} active, {len(revoked_warnings)} revoked",
                 )
-                await ctx.send(view=view)
+                await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
             view = _mod_card(
                 "Error", "error",
                 description=f"Failed to retrieve warnings: {e}",
             )
-            await ctx.send(view=view)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
 
     @warnings_group.command(
         name="modify", description="Modify a warning (remove/revoke it)."
@@ -341,7 +341,7 @@ class Warnings(commands.Cog):
     ):
         """Modify a warning by revoking it."""
         if not self._check_permit(ctx, "warn_members") and not self._check_permit(ctx, "kick_members"):
-            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to manage warnings. Ask an admin to grant you the required permission.")
+            return await ctx.send("You need the 'warn_members' or 'kick_members' permission to manage warnings. Ask an admin to grant you the required permission.", allowed_mentions=discord.AllowedMentions.none())
 
         if reason is None:
             reason = "Warning revoked by moderator."
@@ -372,17 +372,17 @@ class Warnings(commands.Cog):
                     fields={
                         "Affected User": f"<@{warn_obj.user_id}>",
                         "Revoke Reason": reason,
-                        "Moderator": ctx.author.mention,
+                        "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
                         "DM Status": dm_status,
                     },
                 )
-                await ctx.send(view=view)
+                await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         except ValueError:
             view = _mod_card("Error", "error", description=f"Warning `#{case_id}` not found or invalid.")
-            await ctx.send(view=view)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
             view = _mod_card("Error", "error", description=f"Failed to modify warning: {e}")
-            await ctx.send(view=view)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
 
     @warnings_group.command(name="clear", description="Clear all warnings for a user.")
     async def clear_warnings(
@@ -390,7 +390,7 @@ class Warnings(commands.Cog):
     ):
         """Clear all warnings for a user (admin only)."""
         if not self._check_permit(ctx, "administrator"):
-            return await ctx.send("Only administrators can clear all warnings for a user. This action cannot be undone.")
+            return await ctx.send("Only administrators can clear all warnings for a user. This action cannot be undone.", allowed_mentions=discord.AllowedMentions.none())
 
         if reason is None:
             reason = "All warnings cleared."
@@ -416,20 +416,20 @@ class Warnings(commands.Cog):
 
                 view = _mod_card(
                     "Warnings Cleared", "unwarn",
-                    description=f"All warnings for {user.mention} have been cleared.",
+                    description=f"All warnings for {user.display_name} have been cleared.",
                     fields={
                         "Clear Reason": reason,
-                        "Moderator": ctx.author.mention,
+                        "Moderator": f"{ctx.author.display_name} ({ctx.author.id})",
                         "DM Status": dm_status,
                     },
                 )
-                await ctx.send(view=view)
+                await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
             view = _mod_card(
                 "Error", "error",
                 description=f"Failed to clear warnings: {e}",
             )
-            await ctx.send(view=view)
+            await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
 
 
 async def setup(bot: commands.Bot) -> None:

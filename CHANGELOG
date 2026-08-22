@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Anti-ping overhaul (24 files)**: Replaced every `user.mention`/`member.mention`/`role.mention` inside embed descriptions, field values, and message content with plain-text alternatives (`display_name`, `role.name`). This eliminates unwanted `@user` and `@role` pings from moderation confirmations, utility commands, tickets, warnings, appeals, and logging cards.
+- **`allowed_mentions=discord.AllowedMentions.none()` safety net**: Added to every `ctx.send()` and `channel.send()` call across the entire codebase (100+ calls). Even if mention syntax accidentally appears in content, Discord will never render it as a ping.
+- **`?hide` / `?unhide` no longer ping in `?help`**: Docstrings changed from `"@everyone"` to `"everyone"` so the help menu no longer triggers mass pings.
+
+### Changed
+- **`?nuke` rewrite**: Completely rebuilt with a reaction-based flow (green tick / red cross), a detailed embed showing channel stats and destruction steps, a 30-second timeout, and a success embed with a nuclear bomb GIF in the recreated channel. Also adds security: protected channel names blocked, announcement channels blocked, bot permission pre-check, and audit logging.
+
 ### Added
 - **`?sendwm`**: Debug command to send the welcome DM to a specified user or the command author (prefix only, no auth required).
 - **Welcome DM with Components V2**: Completely redesigned welcome DM with clean layout, Quick Links section, and three action buttons (How to Verify, Website, GitHub). The How to Verify button sends an ephemeral guide explaining the Wick captcha and Rules Screening process.

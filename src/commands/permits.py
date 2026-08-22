@@ -242,7 +242,7 @@ class PermitSystem(commands.Cog):
         conn.commit()
         conn.close()
         
-        embed = create_success_embed("Permit Added", f"Added **{role_name}** permit to {member.mention}.")
+        embed = create_success_embed("Permit Added", f"Added **{role_name}** permit to {member.display_name}.")
         await interaction.response.send_message(embed=embed)
 
     @permit_group.command(name="list")
@@ -537,7 +537,7 @@ class PermitSystem(commands.Cog):
         user_entries: list[tuple[str, str]] = []  # (label, body)
         for user_id, roles in users.items():
             member = guild.get_member(user_id) if guild else None
-            label = member.mention if member else f"<@{user_id}>"
+            label = member.display_name if member else f"<@{user_id}>"
             body_parts = []
             for role, perms in sorted(roles.items()):
                 if perms:

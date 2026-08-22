@@ -31,6 +31,8 @@
 
 ## Recent Changes
 
+- **Anti-ping overhaul** -> every `.mention` in embeds replaced with `display_name`/`role.name` across 24 files, plus `allowed_mentions=AllowedMentions.none()` on all 100+ `send()` calls. No more accidental `@user`, `@role`, or `@everyone` pings from bot embeds.
+- **`?nuke` rewrite** -> reaction-based confirmation (green tick / red cross), detailed channel stats embed, 30-second timeout, nuclear bomb GIF success embed in the recreated channel. Protected channel names and announcement channels are blocked.
 - **Authorized role gate** -> only users with the `AUTHORISED_ROLE_ID` role (or the bot owner) can use bot commands. Unauthorized prefix commands are silently ignored; slash commands show a "Not Permitted" card.
 - **Permit system works everywhere** -> all moderation commands (kick, ban, timeout, warn, lock, unlock, purge, clean, slowmode, nickname, softban, unban, untimeout) now respect the custom permit system, not just native Discord permissions.
 - **Non-appealable mutes** -> `/timeout appeal:False` (slash) or `?mute @user 10m reason ?a` (prefix) marks a timeout as non-appealable. The appeals system skips the DM for non-appealable mutes.

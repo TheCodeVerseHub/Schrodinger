@@ -224,7 +224,7 @@ class ReactionRoles(commands.Cog):
                     # Check if bot can assign this role
                     if roles[i].position >= bot_member.top_role.position:
                         await interaction.followup.send(
-                            f"<:redtick:1529045360742502481> I cannot assign the role {roles[i].mention} because it's higher than my highest role!", 
+                            f"<:redtick:1529045360742502481> I cannot assign the role **{roles[i].name}** because it's higher than my highest role!", 
                             ephemeral=True
                         )
                         return
@@ -247,7 +247,7 @@ class ReactionRoles(commands.Cog):
             )
             
             # Add role information to embed description
-            role_list = "\n".join([f"{emoji} {role.mention}" for emoji, role in role_pairs])
+            role_list = "\n".join([f"{emoji} {role.name}" for emoji, role in role_pairs])
             embed.description = f"{description}\n\n**React to get roles:**\n{role_list}"
             
             footer_text = "React with the emojis below to get/remove roles!"
@@ -256,7 +256,7 @@ class ReactionRoles(commands.Cog):
             embed.set_footer(text=footer_text)
             
             # Send the message
-            message = await channel.send(embed=embed)
+            message = await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             
             # Add reactions
             for emoji, _role in role_pairs:
@@ -287,7 +287,7 @@ class ReactionRoles(commands.Cog):
                            f"[Jump to message]({message.jump_url})\n\n"
                            f"**Role Toggle:** {'Enabled' if role_toggle else 'Disabled'}\n\n"
                            f"**Added {len(role_pairs)} role(s):**\n" +
-                           "\n".join([f"{emoji} {role.mention}" for emoji, role in role_pairs]),
+                           "\n".join([f"{emoji} {role.name}" for emoji, role in role_pairs]),
                 color=discord.Color.green()
             )
             await interaction.followup.send(embed=success_embed, ephemeral=True)

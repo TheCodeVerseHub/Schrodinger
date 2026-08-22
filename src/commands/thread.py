@@ -136,7 +136,7 @@ class ThreadCloser(commands.Cog):
 
         embed = discord.Embed(
             title="Ticket Closed",
-            description=f"This ticket has been closed by {ctx.author.mention}",
+            description=f"This ticket has been closed by {f"{ctx.author.display_name} ({ctx.author.id})"}",
             color=0xFF0000,
         )
         embed.add_field(
@@ -150,7 +150,7 @@ class ThreadCloser(commands.Cog):
         embed.set_footer(text=f"Ticket ID: {ticket_id} | Closed via ?close command")
         embed.timestamp = datetime.now(timezone.utc)
 
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
         await asyncio.sleep(10)
         try:
@@ -277,13 +277,13 @@ class ThreadCloser(commands.Cog):
                 color=discord.Color.red(),
             )
             embed.add_field(name="Thread Name", value=thread.name, inline=False)
-            embed.add_field(name="Closed By", value=ctx.author.mention, inline=True)
+            embed.add_field(name="Closed By", value=f"{ctx.author.display_name} ({ctx.author.id})", inline=True)
             embed.set_footer(
                 text=f"Closed at {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
             )
 
             # Send close message first
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
             # Small delay to ensure message is sent before archiving
             await asyncio.sleep(0.5)

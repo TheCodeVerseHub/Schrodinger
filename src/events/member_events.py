@@ -142,11 +142,11 @@ class MemberEvents(commands.Cog):
         try:
             view = build_welcome_view(target)
             await target.send(view=view)
-            await ctx.send(f"✅ Welcome DM sent to {target.mention}.")
+            await ctx.send(f"✅ Welcome DM sent to {target.display_name}.", allowed_mentions=discord.AllowedMentions.none())
         except discord.Forbidden:
-            await ctx.send(f"❌ Could not send DM to {target.mention} (DMs may be disabled).")
+            await ctx.send(f"❌ Could not send DM to {target.display_name} (DMs may be disabled).", allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
-            await ctx.send(f"❌ Error: {e}")
+            await ctx.send(f"❌ Error: {e}", allowed_mentions=discord.AllowedMentions.none())
 
 
 async def setup(bot):

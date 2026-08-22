@@ -150,7 +150,7 @@ class MessageHandler(commands.Cog):
 
         embed = await build_error_embed(ctx, error, ctx.command)
         try:
-            await ctx.send(embed=embed, delete_after=15)
+            await ctx.send(embed=embed, delete_after=15, allowed_mentions=discord.AllowedMentions.none())
         except discord.Forbidden:
             logger.warning("Missing permission to send error response for command %s", ctx.command)
         except Exception as e:

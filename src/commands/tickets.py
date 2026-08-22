@@ -871,7 +871,7 @@ class Tickets(commands.Cog):
         embed = discord.Embed(
             title=f"Ticket #{ticket_number} - {category_name}",
             description=(
-                f"Welcome {user.mention}! Thank you for creating a ticket.\n\n"
+                f"Welcome {user.display_name}! Thank you for creating a ticket.\n\n"
                 "Please describe your issue in detail, and our staff team will assist you shortly."
             ),
             color=0x00FF00,
@@ -893,11 +893,12 @@ class Tickets(commands.Cog):
         embed.set_footer(text=f"Ticket ID: {ticket_id} | CodeVerse Support")
 
         view = TicketControlView(self)
-        staff_mention = staff_role.mention if staff_role else "@Staff"
+        staff_mention = staff_role.name if staff_role else "@Staff"
         welcome_msg = await ticket_channel.send(
-            content=f"{user.mention} | Staff: {staff_mention}",
+            content=f"Ticket by {user.display_name} ({user.id}) | Staff: {staff_role.name}",
             embed=embed,
             view=view,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
         # Store welcome_message_id for persistent view restoration
@@ -997,7 +998,7 @@ class Tickets(commands.Cog):
 
         embed = discord.Embed(
             title="Ticket Closed",
-            description=f"This ticket has been closed by {interaction.user.mention}",
+            description=f"This ticket has been closed by {interaction.user.display_name}",
             color=0xFF0000,
         )
         embed.add_field(
@@ -1136,7 +1137,7 @@ class Tickets(commands.Cog):
         if claimed_by:
             try:
                 claimer = await self.bot.fetch_user(claimed_by)
-                msg = f"This ticket is already claimed by {claimer.mention}"
+                msg = f"This ticket is already claimed by {claimer.display_name}"
             except Exception:
                 msg = "This ticket is already claimed by someone."
             conn.close()
@@ -1155,7 +1156,7 @@ class Tickets(commands.Cog):
 
         embed = discord.Embed(
             title="Ticket Claimed",
-            description=f"{interaction.user.mention} is now handling this ticket.",
+            description=f"{interaction.user.display_name} is now handling this ticket.",
             color=0x0000FF,
         )
         embed.timestamp = datetime.now(timezone.utc)
@@ -1208,7 +1209,7 @@ class Tickets(commands.Cog):
                         color=0x95A5A6,
                     )
                     embed.timestamp = datetime.now(timezone.utc)
-                    await log_channel.send(embed=embed, file=file)
+                    await log_channel.send(embed=embed, file=file, allowed_mentions=discord.AllowedMentions.none())
 
             return transcript
         except Exception as e:
@@ -1332,7 +1333,7 @@ class Tickets(commands.Cog):
             color=colors.get(action, 0x95A5A6),
         )
         embed.add_field(name="Ticket ID", value=f"#{ticket_id}", inline=True)
-        embed.add_field(name="User", value=f"{user.mention} ({user.id})", inline=True)
+        embed.add_field(name="User", value=f"{user.display_name} ({user.id})", inline=True)
         embed.add_field(name="Channel", value=channel.mention, inline=True)
 
         if category:
@@ -1344,7 +1345,7 @@ class Tickets(commands.Cog):
         embed.set_footer(text="Ticket System")
 
         try:
-            await log_channel.send(embed=embed)
+            await log_channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
             print(f"[Tickets] Failed to send log: {e}")
 
@@ -1418,7 +1419,7 @@ class Tickets(commands.Cog):
         )
 
         view = TicketPanelView(self)
-        panel_message = await target_channel.send(embed=embed, view=view)
+        panel_message = await target_channel.send(embed=embed, view=view, allowed_mentions=discord.AllowedMentions.none())
 
         if ctx.guild:
             try:
@@ -1509,7 +1510,8 @@ class Tickets(commands.Cog):
 
         try:
             test_msg = await channel.send(
-                embed=discord.Embed(title="Test", description="Ticket logging enabled.")
+                embed=discord.Embed(title="Test", description="Ticket logging enabled."),
+                allowed_mentions=discord.AllowedMentions.none(),
             )
             await test_msg.delete()
 
@@ -1589,7 +1591,7 @@ class Tickets(commands.Cog):
             await ctx.send(
                 embed=create_info_embed(
                     "Support Role",
-                    f"Current: {current.mention if current else 'Not set'}",
+                    f"Current: {current.name if current else 'Not set'}",
                 ),
                 ephemeral=True,
             )
@@ -1608,7 +1610,7 @@ class Tickets(commands.Cog):
         conn.close()
         await ctx.send(
             embed=create_success_embed(
-                "Support Role Set", f"Support role set to {role.mention}"
+                "Support Role Set", f"Support role set to {role.name}"
             ),
             ephemeral=True,
         )
@@ -1654,7 +1656,7 @@ class Tickets(commands.Cog):
             await ctx.send(
                 embed=create_info_embed(
                     "Report Role",
-                    f"Current: {current.mention if current else 'Not set'}",
+                    f"Current: {current.name if current else 'Not set'}",
                 ),
                 ephemeral=True,
             )
@@ -1673,7 +1675,7 @@ class Tickets(commands.Cog):
         conn.close()
         await ctx.send(
             embed=create_success_embed(
-                "Report Role Set", f"Report role set to {role.mention}"
+                "Report Role Set", f"Report role set to {role.name}"
             ),
             ephemeral=True,
         )
@@ -1719,7 +1721,7 @@ class Tickets(commands.Cog):
             await ctx.send(
                 embed=create_info_embed(
                     "Partner Role",
-                    f"Current: {current.mention if current else 'Not set'}",
+                    f"Current: {current.name if current else 'Not set'}",
                 ),
                 ephemeral=True,
             )
@@ -1738,7 +1740,7 @@ class Tickets(commands.Cog):
         conn.close()
         await ctx.send(
             embed=create_success_embed(
-                "Partner Role Set", f"Partner role set to {role.mention}"
+                "Partner Role Set", f"Partner role set to {role.name}"
             ),
             ephemeral=True,
         )
@@ -1790,7 +1792,7 @@ class Tickets(commands.Cog):
                 await ctx.send(
                     embed=create_info_embed(
                         "Ticket Category Channel",
-                        f"Current ticket category: {current_category.mention}",
+                        f"Current ticket category: #{current_category.name}",
                     ),
                     ephemeral=True,
                 )
@@ -1820,7 +1822,7 @@ class Tickets(commands.Cog):
             await ctx.send(
                 embed=create_success_embed(
                     "Ticket Category Channel Set",
-                    f"Tickets will now be created in {category.mention}",
+                    f"Tickets will now be created in #{category.name}",
                 ),
                 ephemeral=True,
             )
@@ -1916,7 +1918,7 @@ class Tickets(commands.Cog):
                 inline=False,
             )
 
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @ticket_group.command(name="stats")
     @commands.has_permissions(manage_messages=True)
@@ -1935,7 +1937,7 @@ class Tickets(commands.Cog):
         embed.add_field(name="Total", value=str(total), inline=True)
         embed.add_field(name="Open", value=str(open_count), inline=True)
         embed.add_field(name="Closed", value=str(closed_count), inline=True)
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     async def force_close_ticket(
         self,
@@ -1996,14 +1998,14 @@ class Tickets(commands.Cog):
             embed.add_field(
                 name="Ticket Owner", value=f"<@{user_id}> ({user_id})", inline=True
             )
-            embed.add_field(name="Closed By", value=ctx.author.mention, inline=True)
+            embed.add_field(name="Closed By", value=f"{ctx.author.display_name} ({ctx.author.id})", inline=True)
             embed.add_field(name="Category", value=str(category).title(), inline=True)
             embed.add_field(name="Reason", value=reason, inline=False)
             if ticket_channel:
                 embed.add_field(
                     name="Channel", value=ticket_channel.mention, inline=True
                 )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
         if ticket_channel and isinstance(ticket_channel, discord.TextChannel):
             if announce_in_ticket:
@@ -2011,11 +2013,12 @@ class Tickets(commands.Cog):
                     embed=discord.Embed(
                         title="Ticket Force Closed",
                         description=(
-                            f"This ticket has been force closed by {ctx.author.mention}.\n"
+                            f"This ticket has been force closed by {f"{ctx.author.display_name} ({ctx.author.id})"}.\n"
                             "A transcript has been saved and this channel will stay visible for 24 hours before deletion."
                         ),
                         color=0xFF0000,
-                    )
+                    ),
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
 
             await self._generate_transcript(

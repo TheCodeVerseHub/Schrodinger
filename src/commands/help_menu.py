@@ -754,7 +754,7 @@ async def send_help_menu(
     if ctx.interaction:
         await ctx.interaction.response.send_message(view=view, ephemeral=True)
     else:
-        message = await ctx.send(view=view)
+        message = await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
         view.message = message
 
 
@@ -775,4 +775,4 @@ async def _reply(
                 content=content or "", embed=embed, view=view, ephemeral=True
             )
     else:
-        await ctx.send(content=content or "", embed=embed, view=view)
+        await ctx.send(content=content or "", embed=embed, view=view, allowed_mentions=discord.AllowedMentions.none())

@@ -87,7 +87,7 @@ class WebhookManager:
         if self.bot.user is None:
             # Fallback if bot user info isn't available
             try:
-                await channel.send(**send_kwargs)
+                await channel.send(**send_kwargs, allowed_mentions=discord.AllowedMentions.none())
                 return True
             except Exception as e:
                 logger.error(f"Fallback send failed for {channel.id}: {e}")
@@ -131,7 +131,7 @@ class WebhookManager:
         
         # Fallback to direct bot message
         try:
-            await channel.send(**send_kwargs)
+            await channel.send(**send_kwargs, allowed_mentions=discord.AllowedMentions.none())
             return True
         except Exception as e:
             logger.error(f"Fallback send failed for {channel.id}: {e}")
