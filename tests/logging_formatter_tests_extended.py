@@ -96,16 +96,14 @@ def test_resolve_user_returns_none_for_none_id():
 def test_resolve_user_uses_guild_fetch_member_when_not_cached():
     """When get_member returns None but fetch_member succeeds, it should use the fetched member."""
     member = FakeMember(789, "<@789>")
-    guild = SimpleNamespace(
-        get_member=lambda uid: None,
-        fetch_member=lambda uid: asyncio.coroutine(lambda: member)(),
-    )
-    # Patch fetch_member to be a proper async function
     async def fetch_member(uid):
         if uid == 789:
             return member
         raise Exception("NotFound")
-    guild.fetch_member = fetch_member
+    guild = SimpleNamespace(
+        get_member=lambda uid: None,
+        fetch_member=fetch_member,
+    )
 
     bot = FakeBot(guild=guild)
     fmt = _make_formatter(bot)
