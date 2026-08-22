@@ -634,8 +634,8 @@ class ModCog(commands.Cog):
             try:
                 await thread.edit(locked=True)
                 new_name = thread.name
-                if not new_name.startswith("[Locked]"):
-                    new_name = f"[Locked] {thread.name}"
+                if not new_name.startswith("🔒"):
+                    new_name = f"🔒 {thread.name}"
                     await thread.edit(name=new_name, reason=f"Thread locked by {ctx.author}")
                 view = self._mod_action_card(
                     "Thread Locked", "info",
@@ -686,8 +686,8 @@ class ModCog(commands.Cog):
             try:
                 await thread.edit(locked=False)
                 new_name = thread.name
-                if new_name.startswith("[Locked]"):
-                    new_name = new_name[len("[Locked]"):].lstrip()
+                if new_name.startswith("🔒"):
+                    new_name = new_name[len("🔒"):].lstrip()
                     await thread.edit(name=new_name, reason=f"Thread unlocked by {ctx.author}")
                 view = self._mod_action_card(
                     "Thread Unlocked", "success",

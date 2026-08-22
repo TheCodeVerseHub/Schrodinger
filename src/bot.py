@@ -361,7 +361,26 @@ async def on_message(message):
         return
 
     # Block prefix commands from users without the authorized role (silent ignore)
+    # Exception: rules commands (?r1-?r13, ?r34, ?tldr) are public — anyone can use them.
     if message.guild and not _has_authorized_role(message.author):
+        content = message.content.strip()
+        # Determine the actual prefix for this guild
+        prefix = DEFAULT_PREFIX
+        try:
+            stored = await get_guild_prefix(message.guild.id)
+            if stored:
+                prefix = stored
+        except Exception:
+            pass
+        # Check if this is a rules command (e.g. ?r1, ?r2, ..., ?r13, ?r34, ?tldr)
+        if not content.startswith(prefix):
+            return
+        cmd_name = content[len(prefix):].split()[0].lower()
+        _RULES_COMMANDS = {f'r{i}' for i in range(1, 14)} | {'r34', 'tldr'}
+        if cmd_name in _RULES_COMMANDS:
+            # Allow rules commands through to process_commands
+            await bot.process_commands(message)
+            return
         return  # silently ignore — no response
 
     # Process commands normally in authorized servers
