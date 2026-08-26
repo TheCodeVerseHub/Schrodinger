@@ -17,6 +17,20 @@ class MemberLogMixin(commands.Cog):
     async def log_event(self, event_type: str, user_id=None, guild_id=None, moderator_id=None, details=None, **kwargs):
         raise NotImplementedError("Implemented in host class")
 
+    @staticmethod
+    def _extract_moderator_id(reason: str) -> int | None:
+        """Best-effort parse of the moderator id from the audit-log reason."""
+        if " | By: " not in reason:
+            return None
+        try:
+            mod_info = reason.split(" | By: ", 1)[1]
+            if "(" in mod_info and ")" in mod_info:
+                mod_id_str = mod_info.split("(", 1)[1].split(")", 1)[0]
+                return int(mod_id_str)
+        except (ValueError, IndexError) as e:
+            logger.debug("Failed to parse moderator id from reason %r: %s", reason, e)
+        return None
+
     @commands.Cog.listener()
     async def on_member_join(self, member):
         if member.bot:
@@ -149,20 +163,22 @@ class MemberLogMixin(commands.Cog):
                             if entry.reason:
                                 reason = entry.reason
                                 # Check for appended moderator info
+                                parsed_mod_id = self._extract_moderator_id(reason)
+                                if parsed_mod_id is not None:
+                                    moderator_id = parsed_mod_id
                                 if " | By: " in reason:
-                                    try:
-                                        parts = reason.split(" | By: ")
-                                        reason = parts[0]
-                                        mod_info = parts[1]
-                                        if "(" in mod_info and ")" in mod_info:
-                                            mod_id_str = mod_info.split("(")[1].split(")")[0]
-                                            moderator_id = int(mod_id_str)
-                                    except: pass
+                                    reason = reason.split(" | By: ", 1)[0]
                             
                             if entry.user and not moderator_id:
                                 moderator_id = entry.user.id
                             break
-                except: pass
+                except Exception as e:
+                    logger.warning(
+                        "Error fetching audit log for timeout apply in guild %s, user %s: %s",
+                        after.guild.id,
+                        after.id,
+                        e,
+                    )
             
             duration = "Unknown"
             if after_timeout:
@@ -206,20 +222,22 @@ class MemberLogMixin(commands.Cog):
                             if entry.reason:
                                 reason = entry.reason
                                 # Check for appended moderator info
+                                parsed_mod_id = self._extract_moderator_id(reason)
+                                if parsed_mod_id is not None:
+                                    moderator_id = parsed_mod_id
                                 if " | By: " in reason:
-                                    try:
-                                        parts = reason.split(" | By: ")
-                                        reason = parts[0]
-                                        mod_info = parts[1]
-                                        if "(" in mod_info and ")" in mod_info:
-                                            mod_id_str = mod_info.split("(")[1].split(")")[0]
-                                            moderator_id = int(mod_id_str)
-                                    except: pass
+                                    reason = reason.split(" | By: ", 1)[0]
 
                             if entry.user and not moderator_id:
                                 moderator_id = entry.user.id
                             break
-                except Exception: pass
+                except Exception as e:
+                    logger.warning(
+                        "Error fetching audit log for timeout removal in guild %s, user %s: %s",
+                        after.guild.id,
+                        after.id,
+                        e,
+                    )
             
             await self.log_event(
                 event_type="TIMEOUT_EXPIRED" if natural_expiry else "TIMEOUT_REMOVED",

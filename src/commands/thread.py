@@ -1,5 +1,6 @@
 # Cog to manage threads and posts in a Discord server
 import asyncio
+import io
 import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
@@ -8,7 +9,7 @@ import discord
 from discord.ext import commands
 
 from utils.database import DATABASE_NAME
-from config import STAFF_ROLE_ID, ADMIN_BYPASS_ROLE_ID
+from config import STAFF_ROLE_ID, ADMIN_BYPASS_ROLE_ID, TICKET_LOGS_CHANNEL_ID
 
 
 class ThreadCloser(commands.Cog):
@@ -76,6 +77,82 @@ class ThreadCloser(commands.Cog):
             return False, None
         except Exception:
             return False, None
+
+    def _get_ticket_log_channel(self, guild: discord.Guild) -> Optional[discord.TextChannel]:
+        """Best-effort ticket log channel lookup for legacy thread closes."""
+        channel = guild.get_channel(TICKET_LOGS_CHANNEL_ID)
+        if channel and isinstance(channel, discord.TextChannel):
+            return channel
+
+        try:
+            conn = sqlite3.connect(DATABASE_NAME)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT channel_id FROM ticket_log_channels WHERE guild_id = ?",
+                (guild.id,),
+            )
+            result = cursor.fetchone()
+            conn.close()
+            if result:
+                ch = guild.get_channel(result[0])
+                if ch and isinstance(ch, discord.TextChannel):
+                    return ch
+        except Exception:
+            pass
+
+        for ch in guild.text_channels:
+            if ch.name.lower() in ["ticketlog", "ticket-log", "ticketlogs", "ticket-logs"]:
+                return ch
+        return None
+
+    async def _generate_thread_transcript(
+        self, thread: discord.Thread, ticket_id: int
+    ) -> Optional[str]:
+        """Generate and save a transcript for a legacy ticket thread."""
+        try:
+            messages: list[str] = []
+            async for message in thread.history(limit=500, oldest_first=True):
+                timestamp = message.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+                author = f"{message.author.display_name}"
+                content = message.content or "[No text content]"
+
+                if message.attachments:
+                    for attachment in message.attachments:
+                        content += f"\n[Attachment: {attachment.url}]"
+
+                messages.append(f"[{timestamp}] {author}: {content}")
+
+            transcript = (
+                f"Ticket #{ticket_id} Transcript\n"
+                f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+                + ("=" * 80)
+                + "\n\n"
+                + "\n".join(messages)
+            )
+
+            if thread.guild:
+                log_channel = self._get_ticket_log_channel(thread.guild)
+                if log_channel:
+                    file = discord.File(
+                        io.BytesIO(transcript.encode("utf-8")),
+                        filename=f"ticket-{ticket_id}-transcript.txt",
+                    )
+                    embed = discord.Embed(
+                        title=f"Ticket #{ticket_id} Transcript",
+                        description="Transcript saved for closed ticket.",
+                        color=0x95A5A6,
+                    )
+                    embed.timestamp = datetime.now(timezone.utc)
+                    await log_channel.send(
+                        embed=embed,
+                        file=file,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+
+            return transcript
+        except Exception as e:
+            print(f"[Thread] Failed to generate transcript for ticket #{ticket_id}: {e}")
+            return None
 
     async def _close_ticket_thread(
         self, ctx: commands.Context, thread: discord.Thread, ticket_info: dict
@@ -151,6 +228,8 @@ class ThreadCloser(commands.Cog):
         embed.timestamp = datetime.now(timezone.utc)
 
         await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
+        await self._generate_thread_transcript(thread, ticket_id)
 
         await asyncio.sleep(10)
         try:
