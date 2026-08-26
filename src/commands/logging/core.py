@@ -129,7 +129,7 @@ class LoggingCog(MemberLogMixin, ChannelLogMixin, RoleLogMixin, ModerationLogMix
             message_ch, member_ch, server_ch, ticket_ch, mod_ch, other_ch = result
             
             # Legacy simple mapping
-            if event_type.startswith("MEMBER_") or event_type in ("ROLE_ADD", "ROLE_REMOVE", "NICKNAME_UPDATE", "USER_UPDATE"):
+            if event_type.startswith("MEMBER_") or event_type in ("ROLE_ADD", "ROLE_REMOVE", "ROLE_UPDATE_MEMBER", "NICKNAME_UPDATE", "USER_UPDATE"):
                 return member_ch
             elif event_type.startswith("TICKET_"):
                 return ticket_ch

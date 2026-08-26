@@ -33,6 +33,18 @@ AUTHORIZED_SERVERS = AUTHORIZED_GUILD_IDS
 # Default prefix (can be overridden per-guild via /prefix)
 DEFAULT_PREFIX = '?'
 
+PUBLIC_COMPONENT_CUSTOM_IDS = {
+    "welcome_verify",
+    "persistent_ticket_create_button",
+    "ticket_close_button",
+    "ticket_claim_button",
+}
+
+PUBLIC_COMPONENT_EMBED_TITLES = {
+    "Create a New Ticket",
+    "Select Ticket Category",
+}
+
 def _has_authorized_role(member: discord.Member | None) -> bool:
     """Return True if the member has the required authorized role or is the bot owner."""
     if member is None:
@@ -40,6 +52,40 @@ def _has_authorized_role(member: discord.Member | None) -> bool:
     if member.id == BOT_OWNER_ID:
         return True
     return any(r.id == AUTHORISED_ROLE_ID for r in member.roles)
+
+
+def _interaction_custom_id(interaction: discord.Interaction) -> str | None:
+    data = getattr(interaction, "data", None)
+    if isinstance(data, dict):
+        custom_id = data.get("custom_id")
+        return custom_id if isinstance(custom_id, str) else None
+    custom_id = getattr(data, "custom_id", None)
+    return custom_id if isinstance(custom_id, str) else None
+
+
+def _is_public_component_interaction(interaction: discord.Interaction) -> bool:
+    """Allow the public UI flows that are intentionally available to everyone."""
+    if interaction.type is not discord.InteractionType.component:
+        return False
+
+    custom_id = _interaction_custom_id(interaction)
+    if custom_id in PUBLIC_COMPONENT_CUSTOM_IDS:
+        return True
+
+    message = getattr(interaction, "message", None)
+    if message is None:
+        return False
+
+    if getattr(getattr(message, "flags", None), "ephemeral", False):
+        return True
+
+    embeds = getattr(message, "embeds", None) or []
+    if embeds:
+        title = getattr(embeds[0], "title", None)
+        if title in PUBLIC_COMPONENT_EMBED_TITLES:
+            return True
+
+    return False
 
 
 async def _unauthorized_view() -> discord.ui.LayoutView:
@@ -180,6 +226,8 @@ class CodeVerseBot(commands.Bot):
         # Role-based authorization
         member = getattr(interaction, 'user', None)
         if isinstance(member, discord.Member) and not _has_authorized_role(member):
+            if _is_public_component_interaction(interaction):
+                return True
             view = await _unauthorized_view()
             await safe_interaction_reply(interaction, view=view, ephemeral=True)
             return False

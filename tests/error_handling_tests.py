@@ -14,6 +14,7 @@ import asyncio
 import logging
 from types import SimpleNamespace
 
+import bot as bot_module
 from discord.ext import commands
 
 from events.message_handler import MessageHandler, build_error_embed
@@ -229,3 +230,55 @@ def test_build_error_embed_prefix_and_app_permission_errors_share_title():
         )
     )
     assert prefix.title == app.title == "<:redtick:1529045360742502481> Missing Permissions"
+
+
+def test_interaction_check_allows_public_ticket_and_verify_components(monkeypatch):
+    class FakeMember:
+        def __init__(self):
+            self.id = 999
+            self.roles = []
+
+    calls = []
+
+    async def fake_reply(interaction, **kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(bot_module, "safe_interaction_reply", fake_reply)
+    monkeypatch.setattr(bot_module.discord, "Member", FakeMember)
+
+    bot = object.__new__(bot_module.CodeVerseBot)
+    interaction = SimpleNamespace(
+        guild=SimpleNamespace(id=bot_module.AUTHORIZED_SERVERS[0]),
+        user=FakeMember(),
+        type=bot_module.discord.InteractionType.component,
+        data={"custom_id": "welcome_verify"},
+    )
+
+    assert run(bot.interaction_check(interaction)) is True
+    assert calls == []
+
+
+def test_interaction_check_blocks_non_public_unauthorized_components(monkeypatch):
+    class FakeMember:
+        def __init__(self):
+            self.id = 999
+            self.roles = []
+
+    calls = []
+
+    async def fake_reply(interaction, **kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(bot_module, "safe_interaction_reply", fake_reply)
+    monkeypatch.setattr(bot_module.discord, "Member", FakeMember)
+
+    bot = object.__new__(bot_module.CodeVerseBot)
+    interaction = SimpleNamespace(
+        guild=SimpleNamespace(id=bot_module.AUTHORIZED_SERVERS[0]),
+        user=FakeMember(),
+        type=bot_module.discord.InteractionType.application_command,
+        data={},
+    )
+
+    assert run(bot.interaction_check(interaction)) is False
+    assert calls and calls[0].get("ephemeral") is True
