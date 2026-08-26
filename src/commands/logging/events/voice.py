@@ -27,7 +27,12 @@ class VoiceLogMixin(commands.Cog):
                             moderator_id = entry.user.id
                             break
             except Exception as e:
-                logger.error(f"Error fetching audit logs for voice mute: {e}")
+                logger.warning(
+                    "Error fetching audit logs for voice mute in guild %s, user %s: %s",
+                    member.guild.id,
+                    member.id,
+                    e,
+                )
             
             if moderator_id:
                 event_type = "VOICE_MUTE" if after.mute else "VOICE_UNMUTE"
@@ -53,7 +58,12 @@ class VoiceLogMixin(commands.Cog):
                             moderator_id = entry.user.id
                             break
             except Exception as e:
-                logger.error(f"Error fetching audit logs for voice deafen: {e}")
+                logger.warning(
+                    "Error fetching audit logs for voice deafen in guild %s, user %s: %s",
+                    member.guild.id,
+                    member.id,
+                    e,
+                )
             
             if moderator_id:
                 event_type = "VOICE_DEAFEN" if after.deaf else "VOICE_UNDEAFEN"
@@ -81,7 +91,13 @@ class VoiceLogMixin(commands.Cog):
                             if entry.user and entry.user.id != member.id:
                                 moderator_id = entry.user.id
                                 break
-                 except Exception: pass
+                 except Exception as e:
+                    logger.warning(
+                        "Error fetching audit logs for voice disconnect in guild %s, user %s: %s",
+                        member.guild.id,
+                        member.id,
+                        e,
+                    )
                  
                  if moderator_id:
                      await self.log_event(
@@ -102,7 +118,13 @@ class VoiceLogMixin(commands.Cog):
                             if entry.user and entry.user.id != member.id:
                                 moderator_id = entry.user.id
                                 break
-                 except Exception: pass
+                 except Exception as e:
+                    logger.warning(
+                        "Error fetching audit logs for voice move in guild %s, user %s: %s",
+                        member.guild.id,
+                        member.id,
+                        e,
+                    )
                  
                  if moderator_id:
                      await self.log_event(
