@@ -70,6 +70,31 @@ class ModCog(commands.Cog):
             return permits_cog.check_permit(ctx.author.id, ctx.guild.id, permission)
         return False
 
+    async def _iter_currently_timed_out_members(self, guild: discord.Guild) -> list[tuple[discord.Member, datetime]]:
+        """Return members whose Discord timeout is still active.
+
+        Prefer a full guild fetch so the list reflects the whole server, but
+        fall back to the cached member list if the fetch is unavailable.
+        """
+        now = datetime.now(timezone.utc)
+        timed_out: dict[int, tuple[discord.Member, datetime]] = {}
+
+        async def collect(member_iter):
+            async for member in member_iter:
+                until = getattr(member, "timed_out_until", None)
+                if until and until > now:
+                    timed_out[member.id] = (member, until)
+
+        try:
+            await collect(guild.fetch_members(limit=None))
+        except (discord.Forbidden, discord.HTTPException):
+            for member in guild.members:
+                until = getattr(member, "timed_out_until", None)
+                if until and until > now:
+                    timed_out[member.id] = (member, until)
+
+        return sorted(timed_out.values(), key=lambda item: item[1])
+
     # -- Components V2 moderation card builder -------------------------------
 
     # Accent colours keyed by action family.
@@ -569,6 +594,61 @@ class ModCog(commands.Cog):
         except Exception as e:
             discard_mod_action(self.bot, ctx.guild.id, member.id, "TIMEOUT_REMOVED")
             await self._safe_reply(ctx, f"Failed to remove timeout: {e}")
+
+    @commands.command(name="currently-muted", aliases=["cm"], help="Show members who are currently timed out")
+    @commands.guild_only()
+    async def currently_muted(self, ctx: commands.Context):
+        """List all members whose timeout is currently active.
+
+        Prefix-only by design. This is a read-only moderation view, so it uses
+        the same moderation permission gate as timeout actions.
+        """
+        if not self._check_permit(ctx, "moderate_members"):
+            return await self._safe_reply(
+                ctx,
+                "You need the 'Moderate Members' permission or a matching permit to use this command.",
+            )
+
+        if ctx.guild is None:
+            return await self._safe_reply(ctx, "This command can only be used in a server, not in DMs.")
+
+        timed_out_members = await self._iter_currently_timed_out_members(ctx.guild)
+        if not timed_out_members:
+            return await self._safe_reply(ctx, "No members are currently timed out.")
+
+        chunks: list[list[tuple[discord.Member, datetime]]] = []
+        current_chunk: list[tuple[discord.Member, datetime]] = []
+        current_length = 0
+        for item in timed_out_members:
+            member, until = item
+            line = f"• {member.mention} - until <t:{int(until.timestamp())}:F> (<t:{int(until.timestamp())}:R>)"
+            if current_chunk and current_length + len(line) > 3500:
+                chunks.append(current_chunk)
+                current_chunk = []
+                current_length = 0
+            current_chunk.append(item)
+            current_length += len(line) + 1
+        if current_chunk:
+            chunks.append(current_chunk)
+
+        embeds: list[discord.Embed] = []
+        total = len(timed_out_members)
+        for index, chunk in enumerate(chunks, start=1):
+            description = "\n".join(
+                f"• {member.mention} - until <t:{int(until.timestamp())}:F> (<t:{int(until.timestamp())}:R>)"
+                for member, until in chunk
+            )
+            embed = discord.Embed(
+                title="Currently Timed Out Members",
+                description=description,
+                color=discord.Color.orange(),
+            )
+            embed.set_footer(text=f"{total} member{'s' if total != 1 else ''} timed out")
+            if len(chunks) > 1:
+                embed.set_author(text=f"Page {index}/{len(chunks)}")
+            embeds.append(embed)
+
+        await ctx.send(embeds=embeds, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.hybrid_command(name="slowmode", help="View or set slowmode delay for the current channel")
     @app_commands.describe(seconds="Slowmode delay in seconds (0 to disable, max 21600)")
