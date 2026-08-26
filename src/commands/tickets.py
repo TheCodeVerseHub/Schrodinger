@@ -226,6 +226,7 @@ class Tickets(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._pending_deletion_tasks: dict[int, asyncio.Task] = {}
+        self._pending_access_revoke_tasks: dict[int, asyncio.Task] = {}
         self._init_database()
 
         # Configuration
@@ -239,12 +240,17 @@ class Tickets(commands.Cog):
 
         self.bot.loop.create_task(self._restore_persistent_views())
         self.bot.loop.create_task(self._restore_pending_ticket_deletions())
+        self.bot.loop.create_task(self._restore_pending_ticket_access_removals())
 
     def cog_unload(self):
         for task in self._pending_deletion_tasks.values():
             if not task.done():
                 task.cancel()
         self._pending_deletion_tasks.clear()
+        for task in self._pending_access_revoke_tasks.values():
+            if not task.done():
+                task.cancel()
+        self._pending_access_revoke_tasks.clear()
 
     async def _restore_persistent_views(self):
         await self.bot.wait_until_ready()
@@ -351,6 +357,52 @@ class Tickets(commands.Cog):
                 logger.info(f"Restored {restored} delayed ticket deletions")
         except Exception as e:
             logger.error(f"Error restoring delayed ticket deletions: {e}")
+
+    async def _restore_pending_ticket_access_removals(self):
+        """Restore delayed requester access removals for closed tickets after restarts."""
+        await self.bot.wait_until_ready()
+
+        try:
+            conn = sqlite3.connect(DATABASE_NAME)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ticket_id, ticket_channel_id, user_id, access_remove_at
+                FROM tickets
+                WHERE status = 'closed'
+                  AND ticket_channel_id IS NOT NULL
+                  AND access_remove_at IS NOT NULL
+                  AND access_removed_at IS NULL
+                """
+            )
+            rows = cursor.fetchall()
+            conn.close()
+
+            restored = 0
+            for ticket_id, channel_id, user_id, access_remove_at in rows:
+                access_remove_at_dt = self._parse_db_timestamp(access_remove_at)
+                if access_remove_at_dt is None:
+                    continue
+
+                channel = self.bot.get_channel(channel_id)
+                if channel is None or not isinstance(channel, discord.TextChannel):
+                    self._update_ticket_access_state(
+                        ticket_id, access_remove_at=None, access_removed_at=True
+                    )
+                    continue
+
+                restored += 1
+                self._schedule_ticket_owner_access_removal(
+                    ticket_id=ticket_id,
+                    channel=channel,
+                    user_id=user_id,
+                    access_remove_at=access_remove_at_dt,
+                )
+
+            if restored:
+                logger.info(f"Restored {restored} delayed ticket access removals")
+        except Exception as e:
+            logger.error(f"Error restoring delayed ticket access removals: {e}")
 
     async def _restore_ticket_control_views(self):
         """Restore TicketControlView for all open tickets so close/claim buttons survive restarts."""
@@ -492,6 +544,10 @@ class Tickets(commands.Cog):
                 cursor.execute("ALTER TABLE tickets ADD COLUMN delete_at TIMESTAMP")
             if "deleted_at" not in cols:
                 cursor.execute("ALTER TABLE tickets ADD COLUMN deleted_at TIMESTAMP")
+            if "access_remove_at" not in cols:
+                cursor.execute("ALTER TABLE tickets ADD COLUMN access_remove_at TIMESTAMP")
+            if "access_removed_at" not in cols:
+                cursor.execute("ALTER TABLE tickets ADD COLUMN access_removed_at TIMESTAMP")
         except Exception as e:
             print(f"[Tickets] Migration for welcome_message_id failed: {e}")
 
@@ -893,12 +949,17 @@ class Tickets(commands.Cog):
         embed.set_footer(text=f"Ticket ID: {ticket_id} | CodeVerse Support")
 
         view = TicketControlView(self)
-        staff_mention = staff_role.name if staff_role else "@Staff"
+        allowed_mentions = discord.AllowedMentions(
+            everyone=False,
+            users=False,
+            roles=[staff_role] if staff_role else False,
+            replied_user=False,
+        )
         welcome_msg = await ticket_channel.send(
-            content=f"{user.mention} | Staff: {staff_role.mention}",
+            content=f"{user.mention} | Staff: {staff_role.mention if staff_role else '@Staff'}",
             embed=embed,
             view=view,
-            allowed_mentions=discord.AllowedMentions.none(),
+            allowed_mentions=allowed_mentions,
         )
 
         # Store welcome_message_id for persistent view restoration
@@ -990,7 +1051,7 @@ class Tickets(commands.Cog):
             return
 
         cursor.execute(
-            'UPDATE tickets SET status = "closed", closed_at = CURRENT_TIMESTAMP, close_reason = ?, delete_at = datetime(CURRENT_TIMESTAMP, "+24 hours"), deleted_at = NULL WHERE ticket_id = ?',
+            'UPDATE tickets SET status = "closed", closed_at = CURRENT_TIMESTAMP, close_reason = ?, delete_at = datetime(CURRENT_TIMESTAMP, "+24 hours"), deleted_at = NULL, access_remove_at = datetime(CURRENT_TIMESTAMP, "+10 seconds"), access_removed_at = NULL WHERE ticket_id = ?',
             (f"Closed by {interaction.user}", ticket_id),
         )
         conn.commit()
@@ -1005,6 +1066,7 @@ class Tickets(commands.Cog):
             name="Next Steps",
             value=(
                 "A transcript has been saved.\n"
+                "Your access will be removed in 10 seconds so staff can discuss privately.\n"
                 "This channel will remain available for 24 hours so staff can review it before it is deleted."
             ),
             inline=False,
@@ -1014,6 +1076,13 @@ class Tickets(commands.Cog):
         await interaction.followup.send(embed=embed)
 
         await self._generate_transcript(channel, ticket_id, save_to_log=True)
+
+        self._schedule_ticket_owner_access_removal(
+            ticket_id=ticket_id,
+            channel=channel,
+            user_id=user_id,
+            access_remove_at=datetime.now(timezone.utc) + timedelta(seconds=10),
+        )
 
         self._schedule_ticket_channel_deletion(
             ticket_id=ticket_id,
@@ -1259,6 +1328,37 @@ class Tickets(commands.Cog):
         except Exception as e:
             print(f"[Tickets] Failed to update deletion state for ticket #{ticket_id}: {e}")
 
+    def _update_ticket_access_state(
+        self,
+        ticket_id: int,
+        *,
+        access_remove_at: Optional[datetime],
+        access_removed_at: bool = False,
+    ) -> None:
+        try:
+            conn = sqlite3.connect(DATABASE_NAME)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE tickets
+                SET access_remove_at = ?, access_removed_at = ?
+                WHERE ticket_id = ?
+                """,
+                (
+                    access_remove_at.strftime("%Y-%m-%d %H:%M:%S")
+                    if access_remove_at is not None
+                    else None,
+                    datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                    if access_removed_at
+                    else None,
+                    ticket_id,
+                ),
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[Tickets] Failed to update access state for ticket #{ticket_id}: {e}")
+
     async def _delete_ticket_channel_later(
         self, ticket_id: int, channel: discord.TextChannel, delete_at: datetime
     ):
@@ -1304,6 +1404,72 @@ class Tickets(commands.Cog):
 
         task.add_done_callback(_cleanup)
         self._pending_deletion_tasks[ticket_id] = task
+
+    async def _remove_ticket_owner_access_later(
+        self,
+        ticket_id: int,
+        channel: discord.TextChannel,
+        user_id: int,
+        access_remove_at: datetime,
+    ):
+        try:
+            delay = (access_remove_at - datetime.now(timezone.utc)).total_seconds()
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+            if channel.guild is None:
+                return
+
+            fresh_channel = channel.guild.get_channel(channel.id)
+            if fresh_channel is None:
+                self._update_ticket_access_state(
+                    ticket_id, access_remove_at=None, access_removed_at=True
+                )
+                return
+
+            target = fresh_channel.guild.get_member(user_id) or discord.Object(id=user_id)
+            await fresh_channel.set_permissions(
+                target,
+                overwrite=None,
+                reason=f"Ticket #{ticket_id} requester access removed 10 seconds after closure",
+            )
+            self._update_ticket_access_state(
+                ticket_id, access_remove_at=None, access_removed_at=True
+            )
+        except asyncio.CancelledError:
+            raise
+        except discord.NotFound:
+            self._update_ticket_access_state(
+                ticket_id, access_remove_at=None, access_removed_at=True
+            )
+        except Exception as e:
+            print(f"[Tickets] Failed to remove requester access for ticket #{ticket_id}: {e}")
+
+    def _schedule_ticket_owner_access_removal(
+        self,
+        ticket_id: int,
+        channel: discord.TextChannel,
+        user_id: int,
+        access_remove_at: datetime,
+    ) -> None:
+        existing_task = self._pending_access_revoke_tasks.pop(ticket_id, None)
+        if existing_task and not existing_task.done():
+            existing_task.cancel()
+
+        self._update_ticket_access_state(ticket_id, access_remove_at=access_remove_at)
+        task = self.bot.loop.create_task(
+            self._remove_ticket_owner_access_later(
+                ticket_id, channel, user_id, access_remove_at
+            )
+        )
+
+        def _cleanup(done_task: asyncio.Task, *, _ticket_id: int = ticket_id):
+            current = self._pending_access_revoke_tasks.get(_ticket_id)
+            if current is done_task:
+                self._pending_access_revoke_tasks.pop(_ticket_id, None)
+
+        task.add_done_callback(_cleanup)
+        self._pending_access_revoke_tasks[ticket_id] = task
 
     async def _log_ticket_action(
         self,
@@ -1971,7 +2137,7 @@ class Tickets(commands.Cog):
         channel_id, user_id, category = row
 
         cursor.execute(
-            'UPDATE tickets SET status = "closed", closed_at = CURRENT_TIMESTAMP, close_reason = ?, delete_at = datetime(CURRENT_TIMESTAMP, "+24 hours"), deleted_at = NULL WHERE ticket_id = ?',
+            'UPDATE tickets SET status = "closed", closed_at = CURRENT_TIMESTAMP, close_reason = ?, delete_at = datetime(CURRENT_TIMESTAMP, "+24 hours"), deleted_at = NULL, access_remove_at = datetime(CURRENT_TIMESTAMP, "+10 seconds"), access_removed_at = NULL WHERE ticket_id = ?',
             (f"Force closed by {ctx.author}: {reason}", ticket_id),
         )
         conn.commit()
@@ -1991,7 +2157,9 @@ class Tickets(commands.Cog):
                 title="Ticket Force Closed",
                 description=(
                     f"Ticket #{ticket_id} has been force closed.\n"
-                    "A transcript has been saved and the channel will remain available for 24 hours."
+                    "A transcript has been saved.\n"
+                    "Your access will be removed in 10 seconds so staff can discuss privately.\n"
+                    "The channel will remain available for 24 hours."
                 ),
                 color=0xFF0000,
             )
@@ -2014,7 +2182,9 @@ class Tickets(commands.Cog):
                         title="Ticket Force Closed",
                         description=(
                             f"This ticket has been force closed by {ctx.author.mention}.\n"
-                            "A transcript has been saved and this channel will stay visible for 24 hours before deletion."
+                            "A transcript has been saved.\n"
+                            "Your access will be removed in 10 seconds so staff can discuss privately.\n"
+                            "This channel will stay visible for 24 hours before deletion."
                         ),
                         color=0xFF0000,
                     ),
@@ -2023,6 +2193,12 @@ class Tickets(commands.Cog):
 
             await self._generate_transcript(
                 ticket_channel, int(ticket_id), save_to_log=True
+            )
+            self._schedule_ticket_owner_access_removal(
+                ticket_id=int(ticket_id),
+                channel=ticket_channel,
+                user_id=user_id,
+                access_remove_at=datetime.now(timezone.utc) + timedelta(seconds=10),
             )
             self._schedule_ticket_channel_deletion(
                 ticket_id=int(ticket_id),

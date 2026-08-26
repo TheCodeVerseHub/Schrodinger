@@ -6,6 +6,8 @@ from types import SimpleNamespace
 import discord
 
 from commands.logging.formatter import LogFormatter
+from commands.logging.events.members import MemberLogMixin
+from utils.helpers import sanitize_mentions
 
 
 class FakeUser:
@@ -149,5 +151,64 @@ def test_moderation_cards_stay_within_component_limit():
             view = await formatter.create_log_view(base_item(event_type=event_type))
             assert view is not None
             assert sum(1 for _ in view.walk_children()) <= 40
+
+    asyncio.run(run())
+
+
+def test_member_role_logs_use_escaped_mentions():
+    import asyncio
+
+    class FakeRole:
+        def __init__(self, rid: int, name: str):
+            self.id = rid
+            self.name = name
+            self.mention = f"<@&{rid}>"
+
+        def __eq__(self, other):
+            return isinstance(other, FakeRole) and self.id == other.id
+
+    class FakeGuild:
+        def __init__(self, roles):
+            self.id = 123
+            self._roles = {role.id: role for role in roles}
+
+        def get_role(self, rid):
+            return self._roles.get(rid)
+
+    class FakeMember:
+        def __init__(self, mid: int, guild, roles):
+            self.id = mid
+            self.guild = guild
+            self.roles = roles
+            self.bot = False
+            self.nick = None
+            self.name = f"user{mid}"
+
+    class FakeCog(MemberLogMixin):
+        def __init__(self):
+            self.captured = []
+
+        async def log_event(self, **kwargs):
+            self.captured.append(kwargs)
+
+    async def run():
+        base_role = FakeRole(1, "@everyone")
+        added_role = FakeRole(2, "Moderator")
+        removed_role = FakeRole(3, "Muted")
+        guild = FakeGuild([base_role, added_role, removed_role])
+        before = FakeMember(10, guild, [base_role, removed_role])
+        after = FakeMember(10, guild, [base_role, added_role])
+
+        cog = FakeCog()
+        cog._consume_pending_action = lambda *args, **kwargs: (999, "reason", None)
+
+        await cog.on_member_update(before, after)
+
+        assert len(cog.captured) == 2
+        add_log = next(item for item in cog.captured if item["event_type"] == "ROLE_ADD")
+        remove_log = next(item for item in cog.captured if item["event_type"] == "ROLE_REMOVE")
+
+        assert add_log["details"] == f"Added: {sanitize_mentions(added_role.mention)}"
+        assert remove_log["details"] == f"Removed: {sanitize_mentions(removed_role.mention)}"
 
     asyncio.run(run())
