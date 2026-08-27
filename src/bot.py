@@ -423,7 +423,10 @@ async def on_message(message):
         # Check if this is a rules command (e.g. ?r1, ?r2, ..., ?r13, ?r34, ?tldr)
         if not content.startswith(prefix):
             return
-        cmd_name = content[len(prefix):].split()[0].lower()
+        remaining = content[len(prefix):].split()
+        if not remaining:
+            return
+        cmd_name = remaining[0].lower()
         _RULES_COMMANDS = {f'r{i}' for i in range(1, 14)} | {'r34', 'tldr'}
         if cmd_name in _RULES_COMMANDS:
             # Allow rules commands through to process_commands
