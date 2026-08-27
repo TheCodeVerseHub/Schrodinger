@@ -4,8 +4,6 @@ import asyncio
 from datetime import datetime, timezone
 import logging
 
-from utils.helpers import sanitize_mentions
-
 logger = logging.getLogger("codeverse.logging.members")
 
 class MemberLogMixin(commands.Cog):
@@ -94,7 +92,7 @@ class MemberLogMixin(commands.Cog):
                 # I'll log them as ROLE_ADD or ROLE_REMOVE if distinct, or ROLE_UPDATE_MEMBER
                 
                 if added_roles:
-                    added_text = ", ".join(sanitize_mentions(role.mention) for role in added_roles)
+                    added_text = ", ".join(role.mention for role in added_roles)
                     await self.log_event(
                         event_type="ROLE_ADD",  # Routed via LOG_CHANNEL_MAP
                         user_id=after.id,
@@ -104,7 +102,7 @@ class MemberLogMixin(commands.Cog):
                     )
 
                 if removed_roles:
-                    removed_text = ", ".join(sanitize_mentions(role.mention) for role in removed_roles)
+                    removed_text = ", ".join(role.mention for role in removed_roles)
                     await self.log_event(
                         event_type="ROLE_REMOVE",  # Routed via LOG_CHANNEL_MAP
                         user_id=after.id,

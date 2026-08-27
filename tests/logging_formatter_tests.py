@@ -7,7 +7,6 @@ import discord
 
 from commands.logging.formatter import LogFormatter
 from commands.logging.events.members import MemberLogMixin
-from utils.helpers import sanitize_mentions
 
 
 class FakeUser:
@@ -155,7 +154,7 @@ def test_moderation_cards_stay_within_component_limit():
     asyncio.run(run())
 
 
-def test_member_role_logs_use_escaped_mentions():
+def test_member_role_logs_use_role_mentions():
     import asyncio
 
     class FakeRole:
@@ -208,7 +207,8 @@ def test_member_role_logs_use_escaped_mentions():
         add_log = next(item for item in cog.captured if item["event_type"] == "ROLE_ADD")
         remove_log = next(item for item in cog.captured if item["event_type"] == "ROLE_REMOVE")
 
-        assert add_log["details"] == f"Added: {sanitize_mentions(added_role.mention)}"
-        assert remove_log["details"] == f"Removed: {sanitize_mentions(removed_role.mention)}"
+        # Role mentions should not be sanitized so they render as proper Discord mentions
+        assert add_log["details"] == f"Added: {added_role.mention}"
+        assert remove_log["details"] == f"Removed: {removed_role.mention}"
 
     asyncio.run(run())
