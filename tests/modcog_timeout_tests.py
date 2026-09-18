@@ -19,7 +19,7 @@ class FakeMember:
         self.mention = f"<@{mid}>"
         self.timed_out_until = timed_out_until
         self.guild_permissions = SimpleNamespace(moderate_members=True, administrator=False)
-        self.roles = []
+        self.roles: list = []
 
 
 class FakeGuild:
