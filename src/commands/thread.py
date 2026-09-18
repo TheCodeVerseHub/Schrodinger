@@ -379,7 +379,7 @@ class ThreadCloser(commands.Cog):
             print(f"[Thread] Error archiving {thread.id}: {e}")
 
     @commands.command(
-        name="pin", help="Pin a message in thread/post or current channel."
+        name="pin", aliases=["pinmsg", "pinmessage"], help="Pin a message in thread/post or current channel."
     )
     @commands.has_permissions(manage_messages=True)
     async def pin_message(
@@ -428,7 +428,7 @@ class ThreadCloser(commands.Cog):
             await ctx.reply(f"<:redtick:1529045360742502481> Error pinning message: {e}")
 
     @commands.command(
-        name="unpin", help="Unpin a message in thread/post or current channel."
+        name="unpin", aliases=["unpinmsg", "unpinmessage"], help="Unpin a message in thread/post or current channel."
     )
     @commands.has_permissions(manage_messages=True)
     async def unpin_message(

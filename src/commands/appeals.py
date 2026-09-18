@@ -2883,7 +2883,7 @@ class Appeals(commands.Cog):
         )
         view.message = message
 
-    @commands.hybrid_command(name="appealinfo")
+    @commands.hybrid_command(name="appealinfo", aliases=["ai", "checkappeal"])
     @commands.has_permissions(administrator=True)
     @app_commands.describe(appeal_id="The ID of the appeal to get information about")
     async def appealinfo(self, ctx, appeal_id: int):
@@ -2947,7 +2947,7 @@ class Appeals(commands.Cog):
 
         await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.hybrid_command(name="appealcancel")
+    @commands.hybrid_command(name="appealcancel", aliases=["ac", "cancelappeal"])
     @app_commands.describe()
     async def appeal_cancel(self, ctx):
         """Cancel your own pending appeal (users can use this, staff can add @user to cancel another's appeal)"""

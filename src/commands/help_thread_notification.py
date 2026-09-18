@@ -97,7 +97,7 @@ class HelpThreadNotification(commands.Cog):
     def _has_moderator_role(self, member: discord.Member) -> bool:
         return any(role.id == self.moderator_role_id for role in member.roles)
 
-    @commands.command(name="needhelp")
+    @commands.command(name="needhelp", aliases=["helpme", "requesthelp"])
     @commands.guild_only()
     async def needhelp(self, ctx: commands.Context):
         """Manually ping the help channel with an embed of this forum post.

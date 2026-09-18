@@ -262,7 +262,7 @@ class PermitSystem(commands.Cog):
         embed = discord.Embed(title="Permit Roles", description=role_list, color=0x00aaff)
         await interaction.response.send_message(embed=embed)
 
-    @commands.command(name="permits")
+    @commands.command(name="permits", aliases=["permit", "perm"])
     @commands.guild_only()
     async def permits_prefix(self, ctx: commands.Context):
         """Show all available permits and their permissions."""

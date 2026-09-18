@@ -148,7 +148,7 @@ class ModCog(commands.Cog):
 
     # -------- Basic Moderation Commands --------
     
-    @commands.hybrid_command(name="purge", description="Delete a number of messages from the current channel or thread.")
+    @commands.hybrid_command(name="purge", aliases=["clear", "botpurge"], description="Delete a number of messages from the current channel or thread.")
     @commands.bot_has_permissions(manage_messages=True)
     @commands.guild_only()
     async def purge(self, ctx: commands.Context, amount: int):
@@ -240,7 +240,7 @@ class ModCog(commands.Cog):
         except Exception as e:
             await self._safe_reply(ctx, f"Failed to purge messages: {e}")
 
-    @commands.hybrid_command(name="kick", description="Kick a member from the server.")
+    @commands.hybrid_command(name="kick", aliases=["kickmember"], description="Kick a member from the server.")
     @commands.bot_has_permissions(kick_members=True)
     @commands.guild_only()
     async def kick(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
@@ -273,7 +273,7 @@ class ModCog(commands.Cog):
             discard_mod_action(self.bot, ctx.guild.id, member.id, "KICK")
             await self._safe_reply(ctx, f"An unexpected error occurred: {e}")
 
-    @commands.hybrid_command(name="ban", description="Ban a member from the server.")
+    @commands.hybrid_command(name="ban", aliases=["banmember"], description="Ban a member from the server.")
     @commands.bot_has_permissions(ban_members=True)
     @commands.guild_only()
     async def ban(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
@@ -305,7 +305,7 @@ class ModCog(commands.Cog):
             discard_mod_action(self.bot, ctx.guild.id, member.id, "BAN")
             await self._safe_reply(ctx, f"An unexpected error occurred: {e}")
 
-    @commands.hybrid_command(name="unban", description="Unban a previously banned user (use their ID).")
+    @commands.hybrid_command(name="unban", aliases=["unbanuser"], description="Unban a previously banned user (use their ID).")
     @commands.bot_has_permissions(ban_members=True)
     async def unban(self, ctx: commands.Context, user_id: int):
         if not self._check_permit(ctx, "ban_members"):
@@ -341,7 +341,7 @@ class ModCog(commands.Cog):
 
     # -------- Advanced Moderation Commands --------
     
-    @commands.hybrid_command(name="softban", help="Kick a user and delete their messages")
+    @commands.hybrid_command(name="softban", aliases=["sb"], help="Kick a user and delete their messages")
     @app_commands.describe(user="The user to softban", reason="Reason for the softban")
     @commands.bot_has_permissions(ban_members=True)
     @commands.guild_only()
@@ -380,7 +380,7 @@ class ModCog(commands.Cog):
             discard_mod_action(self.bot, ctx.guild.id, user.id, "UNBAN")
             await self._safe_reply(ctx, f"Failed to softban: {e}")
 
-    @commands.hybrid_command(name="clean", help="Delete bot messages and command invocations")
+    @commands.hybrid_command(name="clean", aliases=["botclean", "botclear"], help="Delete bot messages and command invocations")
     @app_commands.describe(count="Number of messages to check (default 100)")
     @commands.bot_has_permissions(manage_messages=True)
     @commands.guild_only()
@@ -650,7 +650,7 @@ class ModCog(commands.Cog):
 
         await ctx.send(embeds=embeds, allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.hybrid_command(name="slowmode", help="View or set slowmode delay for the current channel")
+    @commands.hybrid_command(name="slowmode", aliases=["sm", "ratelimit"], help="View or set slowmode delay for the current channel")
     @app_commands.describe(seconds="Slowmode delay in seconds (0 to disable, max 21600)")
     @commands.bot_has_permissions(manage_channels=True)
     @commands.guild_only()
@@ -1116,7 +1116,7 @@ class ModCog(commands.Cog):
         )
         await self._safe_reply(ctx, view=view)
 
-    @commands.hybrid_command(name="nickname", help="Change a member's nickname")
+    @commands.hybrid_command(name="nickname", aliases=["nick", "nicknameset"], help="Change a member's nickname")
     @app_commands.describe(member="Member to change nickname", nickname="New nickname (leave empty to reset)")
     @commands.bot_has_permissions(manage_nicknames=True)
     @commands.guild_only()
@@ -1233,7 +1233,7 @@ class ModCog(commands.Cog):
         
         await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
     
-    @commands.hybrid_command(name="avatar", help="Get a user's avatar")
+    @commands.hybrid_command(name="avatar", aliases=["pfp", "av"], help="Get a user's avatar")
     @app_commands.describe(user="User to get avatar from (defaults to yourself)")
     async def avatar(self, ctx: commands.Context, user: Optional[Union[discord.Member, discord.User]] = None):
         """Get a user's avatar in high resolution"""
@@ -1252,7 +1252,7 @@ class ModCog(commands.Cog):
         
         await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
     
-    @commands.hybrid_command(name="roleinfo", help="Get information about a role")
+    @commands.hybrid_command(name="roleinfo", aliases=["ri"], help="Get information about a role")
     @app_commands.describe(role="Role to get information about")
     @commands.guild_only()
     async def roleinfo(self, ctx: commands.Context, *, role: discord.Role):
@@ -1320,7 +1320,7 @@ class ModCog(commands.Cog):
         
         await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
     
-    @commands.hybrid_command(name="serverinfo", help="Get detailed server information")
+    @commands.hybrid_command(name="serverinfo", aliases=["si", "guildinfo"], help="Get detailed server information")
     @app_commands.describe()
     @commands.guild_only()
     async def serverinfo(self, ctx: commands.Context):

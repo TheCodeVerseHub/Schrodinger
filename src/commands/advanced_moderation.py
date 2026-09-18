@@ -175,7 +175,7 @@ class AdvancedModeration(commands.Cog):
         user_commands.append(now)
         return True
 
-    @commands.hybrid_command(name="tempban")
+    @commands.hybrid_command(name="tempban", aliases=["tempmute", "tban"])
     @commands.has_permissions(ban_members=True)
     @app_commands.describe(
         member="Member to temporarily ban",
@@ -253,7 +253,7 @@ class AdvancedModeration(commands.Cog):
         except Exception as e:
             logger.warning("Auto-unban failed for user %s in guild %s: %s", user_id, guild.id, e)
 
-    @commands.command(name="hide")
+    @commands.command(name="hide", aliases=["hidechannel"])
     @commands.has_permissions(manage_channels=True)
     async def hide_channel(self, ctx, channel: Optional[discord.TextChannel] = None):
         """Hide a channel from everyone"""
@@ -283,7 +283,7 @@ class AdvancedModeration(commands.Cog):
         except Exception as e:
             await safe_send(ctx, content=f"An error occurred: {e}.", ephemeral=True)
 
-    @commands.command(name="unhide")
+    @commands.command(name="unhide", aliases=["unhidechannel"])
     @commands.has_permissions(manage_channels=True)
     async def unhide_channel(self, ctx, channel: Optional[discord.TextChannel] = None):
         """Unhide a channel for everyone"""

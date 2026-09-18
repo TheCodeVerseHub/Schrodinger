@@ -166,7 +166,7 @@ class StickyMessage(commands.Cog):
         except Exception as e:
             print(f"[StickyMessage] Error loading sticky messages: {e}")
 
-    @commands.hybrid_command(name="stickymessage")
+    @commands.hybrid_command(name="stickymessage", aliases=["sticky", "stick"])
     @commands.has_permissions(manage_messages=True)
     @commands.guild_only()
     @app_commands.describe(
@@ -223,7 +223,7 @@ class StickyMessage(commands.Cog):
         modal = StickyMessageModal(self, target_channel)
         await ctx.interaction.response.send_modal(modal)
 
-    @commands.hybrid_command(name="removesticky")
+    @commands.hybrid_command(name="removesticky", aliases=["unsticky", "removestick"])
     @commands.has_permissions(manage_messages=True)
     @commands.guild_only()
     @app_commands.describe(
@@ -314,7 +314,7 @@ class StickyMessage(commands.Cog):
             )
             await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.hybrid_command(name="liststicky")
+    @commands.hybrid_command(name="liststicky", aliases=["stickies", "lssticky"])
     @commands.has_permissions(manage_messages=True)
     @commands.guild_only()
     async def list_sticky(self, ctx):

@@ -88,7 +88,7 @@ class Core(commands.Cog):
         except Exception as e:
             await msg.edit(content=f"Error loading `{cog_name}`: {str(e)}")
 
-    @commands.hybrid_command(name="prefix", help="View or change the bot prefix")
+    @commands.hybrid_command(name="prefix", aliases=["setprefix", "changeprefix"], help="View or change the bot prefix")
     @app_commands.describe(new_prefix="New prefix to use in this server")
     async def prefix(self, ctx: commands.Context, new_prefix: Optional[str] = None):
         """View or change the bot's command prefix for this guild."""
@@ -119,7 +119,7 @@ class Core(commands.Cog):
         await set_guild_prefix(ctx.guild.id, new_prefix)
         await ctx.reply(f"Prefix updated for **{ctx.guild.name}**: `{current}` → `{new_prefix}`", mention_author=False)
 
-    @commands.hybrid_command(name="ping", help="Check if the bot is responsive")
+    @commands.hybrid_command(name="ping", aliases=["pong", "latency"], help="Check if the bot is responsive")
     async def ping(self, ctx: commands.Context):
         """Latency check."""
         latency_ms = round(self.bot.latency * 1000)
@@ -184,7 +184,7 @@ class Core(commands.Cog):
         else:
             await interaction_or_ctx.response.send_message(success_msg, ephemeral=True)
 
-    @commands.hybrid_command(name="report", help="Report a message to the moderators")
+    @commands.hybrid_command(name="report", aliases=["flag", "flagmsg"], help="Report a message to the moderators")
     @app_commands.describe(message_reference="The Message ID or Link of the message to report")
     async def report(self, ctx: commands.Context, message_reference: str):
         """Report a message to the moderators."""

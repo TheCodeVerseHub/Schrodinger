@@ -107,7 +107,7 @@ class Warnings(commands.Cog):
             logger.error(f"Failed to send DM to user {user_id}: {str(e)}")
             return False, f"⚠️ Failed to send DM: {type(e).__name__}"
 
-    @commands.hybrid_command(name="warn", description="Issue a warning to a user.")
+    @commands.hybrid_command(name="warn", aliases=["warning", "w"], description="Issue a warning to a user.")
     @commands.guild_only()
     async def warn(
         self, ctx: commands.Context, user: discord.User, *, reason: Optional[str] = None
@@ -167,7 +167,7 @@ class Warnings(commands.Cog):
             )
             await ctx.send(view=view, allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.hybrid_command(name="unwarn", description="Remove a warning by ID.")
+    @commands.hybrid_command(name="unwarn", aliases=["unwarning", "uw"], description="Remove a warning by ID.")
     @commands.guild_only()
     async def unwarn(
         self, ctx: commands.Context, case_id: int, *, reason: Optional[str] = None
